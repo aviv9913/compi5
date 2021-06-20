@@ -52,6 +52,7 @@ public:
 class Formals;
 class ExpList;
 class Statements;
+class Statement;
 class Exp;
 class RetType;
 class M;
