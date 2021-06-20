@@ -58,7 +58,7 @@ Funcs:
 FuncDecl:
     RetType ID LPAREN Formals RPAREN {$$= new FuncDecl(dynamic_cast<RetType*>($1), $2,
     dynamic_cast<Formals*>($4));} LBRACE OSM {enterArgsToStackTable(dynamic_cast<Formals*>($4));} Statements
-    CSM{endCurrentFunc();} RBRACE;
+    CSM{endCurrentFunc(dynamic_cast<RetType*>($1));} RBRACE;
 
 RetType:
     Type{$$= new RetType(dynamic_cast<Type*>($1));};
