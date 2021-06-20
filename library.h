@@ -92,22 +92,24 @@ class Statements;
 class Exp;
 
 // New Classes
-classs M : public Node {
+class M : public Node {
 public:
     string code;
     M();
 };
 
 class N : public Node {
+public:
     string code;
     int loc;
     N();
 };
 
 class P : public Node {
+public:
     string code;
     int loc;
-    p(Exp *left);
+    P(Exp *left);
 };
 
 // Type

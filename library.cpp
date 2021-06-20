@@ -60,7 +60,7 @@ void decLoop(N *first, P *second, Statement *st) {
         buffer.bpatch(st->breakList, new_label);
     }
     if (st->continueList.size() != 0) {
-        buffer.bpatch(st->continueList, firat->code);
+        buffer.bpatch(st->continueList, first->code);
     }
 }
 
