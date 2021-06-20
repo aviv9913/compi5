@@ -50,8 +50,8 @@ public:
 
 void openScope();
 void closeScope();
-void endCurrentFunc();
-void decLoop();
+void endCurrentFunc(RetType *retType);
+void decLoop(N *first, P *second, Statement *st) ;
 void incLoop();
 void endProgram();
 void incCase();
