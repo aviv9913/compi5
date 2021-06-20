@@ -11,6 +11,7 @@
 #include <vector>
 #include <stack>
 #include "hw3_output.hpp"
+#include "bp.hpp"
 
 #if 0
 #define FUNC_ENTRY()  \
@@ -55,6 +56,7 @@ void incLoop();
 void endProgram();
 void incCase();
 void decCase();
+string getLLVMType(string type);
 
 class Node {
 public:
@@ -87,6 +89,26 @@ public:
 class Formals;
 class ExpList;
 class Statements;
+class Exp;
+
+// New Classes
+classs M : public Node {
+public:
+    string code;
+    M();
+};
+
+class N : public Node {
+    string code;
+    int loc;
+    N();
+};
+
+class P : public Node {
+    string code;
+    int loc;
+    p(Exp *left);
+};
 
 // Type
 class Type : public Node {
@@ -229,6 +251,9 @@ public:
 class Statement : public Node {
 public:
     string data;
+    string reg;
+    vector<pair<int, BranchLabelIndex>> breakList;
+    vector<pair<int, BranchLabelIndex>> continueList;
     // (Statements)
     Statement(Statements *sts);
 

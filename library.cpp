@@ -6,12 +6,21 @@
 #include <cstring>
 extern char *yytext;
 
-
-int loopCount = 0;
-int insideCase=0;
+/// Global variables
 string currentFunc;
+int currentFuncArgs;
+int loopCount = 0;
+int insideCase = 0;
+
+/// Table Stack
 vector<shared_ptr<SymbolTable>> tableStack;
 vector<int> offsetStack;
+
+/// Code Buffer
+CodeBuffer &buffer = CodeBuffer::instance();
+
+/// Registers
+//TODO
 
 void printTableStack(){
     for(int i=0; i<tableStack.size(); i++){
@@ -33,17 +42,26 @@ void decCase() {
     insideCase--;
 }
 
-
 void incLoop() {
     loopCount++;
 }
 
-void decLoop() {
+void decLoop(N *first, P *second, Statement *st) {
     loopCount--;
-}
 
-void endCurrentFunc() {
-    currentFunc = "";
+    int new_loc = buffer.emit("br label @");
+    string new_label = buffer.genLabel();
+    buffer.bpatch(buffer.makelist({first->loc, FIRST}), first->code);
+    buffer.bpatch(buffer.makelist({second->loc, FIRST}), second->code);
+    buffer.bpatch(buffer.makelist({second->loc, SECOND}), new_label);
+    buffer.bpatch(buffer.makelist({new_loc, FIRST}), first->code);
+
+    if (st->breakList.size() != 0) {
+        buffer.bpatch(st->breakList, new_label);
+    }
+    if (st->continueList.size() != 0) {
+        buffer.bpatch(st->continueList, firat->code);
+    }
 }
 
 void openScope(){
@@ -56,9 +74,9 @@ void openScope(){
 void closeScope(){
     output::endScope();
     auto scope_table = tableStack.back();
-    for (auto i:scope_table->symbols) {//printing all the variables(not enumDef) and functions
+    for (auto i:scope_table->symbols) {//printing all the variables and functions
         if (i->type.size() == 1) { //variable
-            output::printID(i->name, i->offset, i->type[0]);
+//            output::printID(i->name, i->offset, i->type[0]);
         } else {
             auto retVal = i->type.back();
             i->type.pop_back();
@@ -66,7 +84,7 @@ void closeScope(){
                 i->type.pop_back();
             }
             //functions
-            output::printID(i->name, i->offset, output::makeFunctionType(retVal, i->type));
+//            output::printID(i->name, i->offset, output::makeFunctionType(retVal, i->type));
         }
     }
 
@@ -100,8 +118,21 @@ void endProgram() {
         exit(0);
     }
     closeScope();
+    buffer.printCodeBuffer();
+    buffer.printGlobalBuffer();
 }
 
+void endCurrentFunc(RetType *retType) {
+    if (retType->value == "VOID") {
+        buffer.emit("ret void");
+    } else {
+        string type = getLLVMType(retType->value);
+        buffer.emit("ret " + type + "0");
+    }
+    buffer.emit("}");
+    currentFunc = "";
+    currentFuncArgs = 0;
+}
 
 void enterArgsToStackTable(Formals *fm) {
     DEBUG(cout<<"enterArgsToStackTable:"<<endl;)
@@ -126,6 +157,21 @@ bool IDExists(string id) {
     return false;
 }
 
+string getLLVMType(string type) {
+    if (type == "VOID") {
+        return "void";
+    }
+    if (type == "BOOL") {
+        return "i1";
+    }
+    if (type == "BYTE") {
+        return "i8";
+    }
+    if (type == "STRING") {
+        return "i8*";
+    }
+    return "i32"; // int
+}
 /************************ CALL ************************/
 // Call: ID()
 Call::Call(Node *ID) {
