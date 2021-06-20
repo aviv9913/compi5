@@ -48,6 +48,16 @@ public:
     SymbolTable() = default;
 };
 
+// declaring a few classes, all of them inherent from Node
+class Formals;
+class ExpList;
+class Statements;
+class Exp;
+class RetType;
+class M;
+class N;
+class P;
+
 void openScope();
 void closeScope();
 void endCurrentFunc(RetType *retType);
@@ -84,12 +94,6 @@ public:
 };
 
 #define YYSTYPE Node*
-
-// declaring a few classes, all of them inherent from Node
-class Formals;
-class ExpList;
-class Statements;
-class Exp;
 
 // New Classes
 class M : public Node {
