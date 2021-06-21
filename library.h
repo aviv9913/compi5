@@ -13,7 +13,7 @@
 #include "hw3_output.hpp"
 #include "bp.hpp"
 
-#if 0
+#if 1
 #define FUNC_ENTRY()  \
   cerr << __PRETTY_FUNCTION__ << " --> " << endl;
 
@@ -72,7 +72,8 @@ string getLLVMType(string type);
 class Node {
 public:
     string value;
-
+    string reg;
+    string instruction;
     Node(string str) {
         DEBUG(cout<<str<<"|"<<endl;)
         if (str == "void") {
@@ -89,6 +90,7 @@ public:
 
     Node() {
         value = "";
+        instruction = "";
     }
 
     virtual ~Node() {};
@@ -138,6 +140,10 @@ class Exp : public Node {
 public:
     string type;
     bool boolValue;
+    vector <pair<int,BranchLabelIndex>> trueList;
+    vector <pair<int,BranchLabelIndex>> falseList;
+    std::string startLabel;
+    int loc;
 
     // NUM, NUM B, STRING, TRUE, FALSE
     Exp(Node *terminal, string str);

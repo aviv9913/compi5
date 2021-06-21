@@ -398,11 +398,11 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
 
     // checking that param names doesn't equal func name
     for (int i = 0; i < args->formals.size(); ++i) {
-        if (args->formals[i]->value.compare(ID->value) == 0) {
+        if (IDExists(args->formals[i]->value) ||
+            args->formals[i]->value.compare(ID->value) == 0) {
             output::errorDef(yylineno, args->formals[i]->value);
             exit(0);
         }
-        // TODO: maybe move to Formals class
         // checking that 2 params don't have the same name
         for (int j = i + 1; j < args->formals.size(); ++j) {
             if (args->formals[i]->value.compare(args->formals[j]->value) == 0) {
@@ -412,20 +412,57 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
         }
     }
     this->value = ID->value;
+    string argString = "(";
+    //adding formals to symbol table and creating argString for the LLVM code
     if (args->formals.size() != 0) {
         for (int i = 0; i < args->formals.size(); ++i) {
             this->types.push_back(args->formals[i]->type);
+            argString += getLLVMType(args->formals[i]->type) + ",";
         }
+        argString.back() = ')'; // args is "(type name,type name)"
     }
     else{
         this->types.emplace_back("VOID");
+        argString += ")";
     }
+    DEBUG(cout<<"Arguments string: "<<argString<<end;)
     this->types.emplace_back(retType->value);
     // open new scope for func
 
     auto func_scope = shared_ptr<SymbolEntry>(new SymbolEntry(this->value, this->types, 0));
     tableStack[0]->symbols.push_back(func_scope);
     currentFunc = this->value;
+    currentFuncArgs = args->formals.size();
+    string retTypeString = getLLVMType(retType->value);
+    //define i8 @function(i8,i8) {
+    buffer.emit(
+      "define " + retTypeString + " @"+ this->value + argString + " {"
+    );
+    //%stack = alloca [50 x i32] max 50 args on stack
+    buffer.emit("%stack = alloca [50 x i32]");
+    //%args = alloca [<size> x i32]
+    buffer.emit("%args = alloca [" + to_string(args->formals.size()) + " x i32]");
+    //TODO: reg pool
+    for(int i=0; i<args->formals.size(); ++i){
+        string ptrReg = pool.getReg();
+        //%reg = getelementptr [<size> x i32],[<size> x i32]* %argsArrayPtr, i32 0, i32 <argNum>
+        buffer.emit(
+                "%" + ptrReg + " = getelementptr [" + to_string(size) + " x i32]," +
+                " [" + to_string(size) + " x i32]* %args," +
+                "i32 0, i32 " +    to_string(currFuncArgs - i - 1));
+                );
+        string dataReg = to_string(i);
+        string argType = getLLVMType(args->formals[i]->type);
+        if(argType != "i32"){
+            dataReg = pool.getReg();
+            //%reg = zext i8 %reg to i32
+            buffer.emit(
+                    "%" + dataReg + " = zext " + argType + " %" + to_string(i) + " to i32";
+                    )
+        }
+        //store i32 %reg, i32* %ptr
+        buffer.emit("store i32 %" + dataReg + ", i32* %" + ptrReg)
+    }
 }
 
 // FormalsList-> FormalDecl
@@ -462,12 +499,41 @@ Statement::Statement(Type *type, Node *ID) {
         output::errorDef(yylineno, ID->value);
         exit(0);
     }
-    this->data = "type id";
+    //avoiding malloc statements
+    vector<pair<int, BranchLabelIndex>> tmpList1;
+    vector<pair<int, BranchLabelIndex>> tmpList2;
+    this->breakList = tmpList1;
+    this->continueList = tmpList2;
+
     // insert to current scope
     int offset = offsetStack.back()++;
     auto new_entry = shared_ptr<SymbolEntry>(new SymbolEntry(ID->value, type->value, offset));
     tableStack.back()->symbols.emplace_back(new_entry);
+
+    //Writing LLVM code
+    this->data = "type id";
+    this->reg = pool.getReg();
+    string expType = getLLVMType(type->value);
+    buffer.emit(
+            "%" + this->reg + " = add " + expType + " 0,0";
+            );
+    string ptr = pool.getReg();
+    //%reg= add i8 reg, reg
+    buffer.emit(
+            "%" + ptr + " = getelementptr [50 x i32], [50 x i32]*  %stack, i32 0, i32 " + to_string(offset);
+            );
+    string dataReg = reg;
+    if(expType != "i32"){
+        dataReg = pool.getReg();
+        //%reg = zext i8 reg to i32
+        buffer.emit(
+                "%" + dataReg + " = zext " + expType + " %" + reg + " to i32"
+        );
     }
+    buffer.emit("store i32 %" + dataReg + ", i32* %" + ptr);
+
+}
+
 
 // Statement-> Type ID = Exp;
 Statement::Statement(Type *type, Node *ID, Exp *exp) {
@@ -490,11 +556,83 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     int offset = offsetStack.back()++;
     auto new_entry = shared_ptr<SymbolEntry>(new SymbolEntry(ID->value, type->value, offset));
     tableStack.back()->symbols.emplace_back(new_entry);
+
+    //Writing LLVM code
+    this->reg = pool.getReg();
+    string expType = getLLVMType();
+    string dataReg = exp->reg;
+    if(type->value.compare("INT") == 0 && exp->type.compare("BYTE") == 0){
+        //%reg = zext i8 %reg to i32
+        dataReg = pool.getReg();
+        buffer.emit("%" + dataReg + " = zext i8 %" + exp->reg + " to i32");
+    }
+
+    buffer.emit(
+            "%" + this->reg + " = add" + expType + " 0,%" + dataReg
+            );
+    string ptrReg = pool.getReg();
+    buffer.emit(
+            "%" + this->reg + " = add " + expType + " 0,%" + dataReg
+            );
+    dataReg = reg;
+    if(expType != "i32"){
+        dataReg = pool.getReg();
+        //%reg = zext i8 reg to i32
+        buffer.emit(
+                "%" + dataReg + " = zext " + expType + " %" + reg + " to i32"
+        );
+    }
+    buffer.emit("store i32 %" + dataReg + ", i32* %" + ptr);
+}
+
+string emitCodeToBuffer(string data, string type, int offset){
+    string reg = pool.getReg();
+    string dataReg = data;
+    string argType = getLLVMType(type);
+    if(argType != "i32"){
+        dataReg = pool.getReg();
+        //%reg = zext i8 reg to i32
+        buffer.emit(
+                "%" + dataReg + " = zext " + argType + " %" + data + " to i32"
+        );
+    }
+    buffer.emit(
+            "%" + reg + " = add i32 0,%" + dataReg
+            );
+    string ptrReg = pool.getReg();
+    if(offset >= 0){
+        buffer.emit(
+                "%" + ptrReg + " = getelementor [50 x i32], [50 x i32]* %stack, i32 0," +
+                "i32 " + to_string(offset)
+                );
+
+    } else if(offset < 0 && currentFuncArgs > 0){
+        buffer.emit(
+                "%" + ptr +
+                " = getelementptr [ " + to_string(currentFuncArgs) + "x i32]," +
+                " [" + to_string(currentFuncArgs) + " x i32]* %args," +
+                " i32 0," +
+                " i32 " + to_string(currentFuncArgs + offset)
+                );
+    } else{
+        cout<<"Not suppose get here, currentFuncArgs = 0 and offset < 0"<<endl;
+    }
+
+    buffer.emit("store i32 %" + reg + ", i32* %" + ptr);
+    return reg;
+    //%ptr = getelementptr inbounds[10 x i32]* %args, i32 0, i32 0
+    //store i32 %t3, i32* %ptr
 }
 
 // Statement-> ID = EXP;
 Statement::Statement(Node *ID, Exp *exp) {
     FUNC_ENTRY()
+    //avoid malloc statments
+    vector<pair<int, BranchLabelIndex>> tmpList1;
+    vector<pair<int, BranchLabelIndex>> tmpList2;
+    this->breakList = tmpList1;
+    this->continueList = tmpList2;
+
     // checking if the ID is in scope and type fits exp type
     for (int i = tableStack.size()-1; i > 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
@@ -504,6 +642,8 @@ Statement::Statement(Node *ID, Exp *exp) {
                          tableStack[i]->symbols[j]->type[0] == exp->type) {
                         this->data = exp->value;
                         this->value = tableStack[i]->symbols[j]->type[0];
+                        this->instruction = exp->instruction;
+                        this->reg = emitCodeToBuffer(exp->reg, exp->type, tableStack[i]->symbols[j]->offset);
                         return;
                     }
                 } else {
@@ -524,19 +664,21 @@ Statement::Statement(Call *call) {
     this->data = "this was a call for a function";
 }
 
-// TODO: not sure about this implementation
 // Statement-> return;
 Statement::Statement(RetType *retType) {
     FUNC_ENTRY()
-    DEBUG(cout<<"symbol_stack size:"<<tableStack.size()<<endl;)
+    vector<pair<int, BranchLabelIndex>> tmpList1;
+    vector<pair<int, BranchLabelIndex>> tmpList2;
+    this->breakList = tmpList1;
+    this->continueList = tmpList2;
+
     for (int i = tableStack.size() -1; i >= 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
             if (tableStack[i]->symbols[j]->name == currentFunc){
                 int size = tableStack[i]->symbols[j]->type.size();
-                DEBUG(cout<<"size:"<<size<<" it has to be >0 "<<endl;)
-                DEBUG(if(size>0) cout<<"funcRetType:"<<tableStack[i]->symbols[j]->type.back()<<endl;)
                 if (tableStack[i]->symbols[j]->type.back().compare("VOID") == 0) {
                     this->data = "ret val of void";
+                    buffer.emit("ret void");
                     return;
                 } else {
                     output::errorMismatch(yylineno);
@@ -545,13 +687,18 @@ Statement::Statement(RetType *retType) {
             }
         }
     }
-    output::errorUndef(yylineno, "yaba daba doo"); // shouldn't reach this
+    output::errorUndef(yylineno, "zazi bazazi");
     exit(0);
 }
 
 // Statement-> return Exp;
 Statement::Statement(Exp *exp) {
     FUNC_ENTRY()
+    vector<pair<int, BranchLabelIndex>> tmpList1;
+    vector<pair<int, BranchLabelIndex>> tmpList2;
+    this->breakList = tmpList1;
+    this->continueList = tmpList2;
+
     if (exp->type.compare("VOID") == 0) {
         output::errorMismatch(yylineno);
         exit(0);
@@ -562,9 +709,16 @@ Statement::Statement(Exp *exp) {
                 int size = tableStack[i]->symbols[j]->type.size();
                 if (tableStack[i]->symbols[j]->type[size - 1] == exp->type) {
                     this->data = exp->value;
+                    string LLVMRetType = getLLVMType(exp->type);
+                    buffer.emit("ret " + LLVMRetType + " %"+exp->reg);
                     return;
                 } else if (exp->type == "BYTE" && tableStack[i]->symbols[j]->type[size - 1] == "INT") {
                     this->data = exp->value;
+                    string dataReg = pool.getReg();
+                    buffer.emit(
+                            "%" + dataReg + " = zext i8 %" + exp->reg + " to i32"
+                            );
+                    buffer.emit("ret i32 %" + dataReg);
                     return;
                 } else {
                     output::errorMismatch(yylineno);
@@ -573,7 +727,7 @@ Statement::Statement(Exp *exp) {
             }
         }
     }
-    output::errorUndef(yylineno, "yaba daba doo2"); // should not reach this
+    output::errorUndef(yylineno, "zazi bazazi2");
     exit(0);
 }
 
