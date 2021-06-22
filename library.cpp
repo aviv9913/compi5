@@ -236,7 +236,7 @@ string prepareCommandForEmit(bool isGlobal, string reg, string type, string valu
 
 string prepareRELOPCommandForEmit(string reg1, string reg2, string isize, string reg3 = "", string relop = ""){
     std::stringstream command;
-    if (relop.empty()) {
+    if (relop.empty() && reg3.empty()) {
         command << "%";
         command << reg1;
         command << " = zext i8 %";
@@ -254,11 +254,28 @@ string prepareRELOPCommandForEmit(string reg1, string reg2, string isize, string
         command << isize;
         command << " %";
         command << reg2;
-        command << ", %";
-        command << reg3;
+        if (reg3.compare("cond") == 0) {
+            command << ", 0";
+        } else {
+            command << ", %";
+            command << reg3;
+        }
         string ret(command.str());
         return ret;
     }
+}
+
+string prepareBranchCommand(string reg = "") {
+    std::stringstream command;
+    if (reg.empty()) {
+        command << "br label @";
+    } else {
+        command << "br i1 %";
+        command << reg;
+        command << ", label @, label @";
+    }
+    string ret(command.str());
+    return ret;
 }
 
 string findRELOPType(string op, string isize) {
@@ -291,6 +308,20 @@ string findRELOPType(string op, string isize) {
         } else {
             type = "sge";
         }
+    }
+    return type;
+}
+
+string findOPType(string op) {
+    string type = "";
+    if (op.compare("+") == 0) {
+        type = "add";
+    } else if (op.compare("-") == 0) {
+        type = "sub";
+    } else if (op.compare("*") == 0) {
+        type = "mul";
+    } else if (op.compare("/") == 0) {
+        type = "div";
     }
     return type;
 }
@@ -433,7 +464,7 @@ Exp::Exp(Node *Not, Exp *exp) {
     string command = prepareCommandForEmit(false, this->reg, this->type, to_string(exp->reg));
     buffer.emit(command);
 }
-
+//TODO: update parser
 // Exp op Exp
 Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     FUNC_ENTRY()
@@ -444,18 +475,92 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     vector<pair<int, BranchLabelIndex>> true_list;
     this->falseList = false_list;
     this->trueList = true_list;
+    string end_instr;
 
     DEBUG(cout<<"left:"<<left->type<<", op:"<<op->value<<", right:"<<right->type<<", srting:"<<str<<endl;)
     // RELOP checking if both exp are numbers
     if ((left->type.compare("INT") == 0 || left->type.compare("BYTE") == 0) &&
         (right->type.compare("INT") == 0 || right->type.compare("BYTE") == 0)) {
+        string isize = findIRSize(left->type, right->type);
+        string dataRegL = left->reg;
+        string dataRegR = right->reg;
         if (str.compare("RELOPL") == 0 || str.compare("RELOPN") == 0) {
             this->type = "BOOL";
+            string relop = findRELOPType(op->value, isize);
+            if (isize.compare("i32") == 0) {
+                if (left->type.compare("BYTE") == 0) {
+                    dataRegL = pool.getReg();
+                    string command = prepareRELOPCommandForEmit(dataRegL, left->reg, isize);
+                    buffer.emit(command);
+                }
+                if (right->type.compare("BYTE") == 0) {
+                    dataRegR = pool.getReg();
+                    string command = prepareRELOPCommandForEmit(dataRegR, right->reg, isize);
+                    buffer.emit(command);
+                }
+            }
+            string command = prepareRELOPCommandForEmit(this->reg, dataRegL, isize, dataRegR, relop);
+            buffer.emit(command);
+            if (!right->instruction.empty()) {
+                end_instr = right->instruction;
+            } else {
+                end_instr = left->instruction;
+            }
+
         } // BINOP
         else if (str.compare("ADD") == 0 || str.compare("MUL") == 0) {
             this->type = "INT";
-            if (left->type.compare("BYTE") == 0 || right->type.compare("BYTE")) {
+            if (left->type.compare("BYTE") == 0 && right->type.compare("BYTE")) {
                 this->type = "BYTE"; //
+            }
+            this->reg = pool.getReg();
+            string op_type = findOPType(op->value);
+            if (op_type.compare("div") == 0) {
+                string cond = pool.getReg();
+                if (right->type.compare("BYTE") == 0) {
+                    dataRegR = pool.getReg();
+                    string command = prepareRELOPCommandForEmit(dataRegR, right->reg, isize);
+                }
+                if (left->type.compare("BYTE") == 0) {
+                    dataRegL = pool.getReg();
+                    string command = prepareRELOPCommandForEmit(dataRegL, left->reg, isize);
+                }
+                string command = prepareRELOPCommandForEmit(cond, dataRegR, isize, "cond", "eq");
+                buffer.emit(command);
+                command = prepareBranchCommand(cond);
+                int loc_B_first = buffer.emit(command);
+                string Lfirst = buffer.genLabel();
+                string zero_reg = pool.getReg();
+                // handling div by 0
+                buffer.emit("%" + zero_reg + " = getelementptr [22 x i8], [22 x i8]* @DivByZeroExcp, i32 0, i32 0");
+                buffer.emit("call void @print(i8* %" + zero_reg + ")");
+                buffer.emit("call void @exit(i32 0)");
+                command = prepareBranchCommand();
+                int loc_B_second = buffer.emit(command);
+                string Lsecond = buffer.genLabel();
+                buffer.bpatch(buffer.makelist({loc_B_first, FIRST}), Lfirst);
+                buffer.bpatch(buffer.makelist({loc_B_first, SECOND}), Lsecond);
+                buffer.bpatch(buffer.makelist({loc_B_second, FIRST}), Lsecond);
+                end_instr = Lsecond;
+            }
+            if (isize.compare("i32") == 0) {
+                if (left->type.compare("BYTE") == 0) {
+                    dataRegL = pool.getReg();
+                    string command = prepareRELOPCommandForEmit(dataRegL, left->reg, isize);
+                    buffer.emit(command);
+                }
+                if (right->type.compare("BYTE") == 0) {
+                    dataRegR = pool.getReg();
+                    string command = prepareRELOPCommandForEmit(dataRegR, right->reg, isize);
+                    buffer.emit(command);
+                }
+            }
+            string command = prepareRELOPCommandForEmit(this->reg, dataRegL, isize, dataRegR, op_type);
+            buffer.emit(command);
+            if (op_type.compare("div") == 0 && right->type.compare("BYTE") == 0 && left->type.compare("BYTE") == 0) {
+                string data_reg = pool.getReg();
+                buffer.emit("%" + data_reg + " = trunc i32 %" + this->reg + " to i8");
+                this->reg = data_reg;
             }
         }
     } // AND, OR
