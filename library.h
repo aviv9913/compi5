@@ -142,7 +142,7 @@ public:
     bool boolValue;
     vector <pair<int,BranchLabelIndex>> trueList;
     vector <pair<int,BranchLabelIndex>> falseList;
-    std::string startLabel;
+    string startLabel;
     int loc;
 
     // NUM, NUM B, STRING, TRUE, FALSE
@@ -152,7 +152,7 @@ public:
     Exp(Node *Not, Exp *exp);
 
     // BINOP, AND, OR, RELOP
-    Exp(Exp *left, Node *op, Exp *right, string str);
+    Exp(Exp *left, Node *op, Exp *right, string str, P *shortC);
 
     // (Exp) also check missing string
     Exp(Exp *exp);

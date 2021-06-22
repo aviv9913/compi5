@@ -4,6 +4,7 @@
 
 #include "library.h"
 #include <cstring>
+#include <sstream>
 extern char *yytext;
 
 /// Global variables
@@ -45,7 +46,7 @@ void decCase() {
 void incLoop() {
     loopCount++;
 }
-
+//TODO: add M, N, P to parser
 void decLoop(N *first, P *second, Statement *st) {
     loopCount--;
 
@@ -172,6 +173,137 @@ string getLLVMType(string type) {
     }
     return "i32"; // int
 }
+//TODO: add all below to library.h
+string prepareCommandForEmit(bool isGlobal, string reg, string type, string value = "", int size = 0) {
+    std::stringstream command;
+    if (isGlobal){
+        if (type.compare("STRING") == 0) {
+            command << "@";
+            command << reg;
+            command << "= constant [";
+            command << to_string(size);
+            command << " x i8] c\"";
+            command << value;
+            command << "\"";
+            string ret(command.str());
+            return ret;
+        }
+    } else {
+        if (type.compare("STRING") == 0) {
+            command << "%";
+            command << reg;
+            command << "= getelementptr [";
+            command << to_string(size);
+            command << " x i8], [";
+            command << to_string(size);
+            command << " x i8]* @";
+            command << reg;
+            command << ", i8 0, i8 0";
+            string ret(command.str());
+            return ret;
+        } else if (type.compare("INT") == 0) {
+            command << "%";
+            command << reg;
+            command << " = add i32 0,";
+            command << value;
+            string ret(command.str());
+            return ret;
+        } else if (type.compare("BYTE") == 0) {
+            command << "%";
+            command << reg;
+            command << " = add i8 0,";
+            command << value;
+            string ret(command.str());
+            return ret;
+        } else if (type.compare("BOOL") == 0) {
+            command << "%";
+            command << reg;
+            command << " = add i1 ";
+            if (value.compare("true") == 0) {
+                command << "0,1";
+            } else if (value.compare("false") == 0) {
+                command << "0,0";
+            } else {
+                command << "1, %";
+                command << value;
+            }
+            string ret(command.str());
+            return ret;
+        }
+    }
+    return ""; // shouldn't get here
+}
+
+string prepareRELOPCommandForEmit(string reg1, string reg2, string isize, string reg3 = "", string relop = ""){
+    std::stringstream command;
+    if (relop.empty()) {
+        command << "%";
+        command << reg1;
+        command << " = zext i8 %";
+        command << reg2;
+        command << " to ";
+        command << isize;
+        string ret(command.str());
+        return ret;
+    } else {
+        command << "%";
+        command << reg1;
+        command << " = icmp ";
+        command << relop;
+        command << " ";
+        command << isize;
+        command << " %";
+        command << reg2;
+        command << ", %";
+        command << reg3;
+        string ret(command.str());
+        return ret;
+    }
+}
+
+string findRELOPType(string op, string isize) {
+    string type = "";
+    if (op.compare("==") == 0) {
+        type = "eq";
+    } else if (op.compare("!=") == 0) {
+        type = "ne";
+    } else if (op.compare("<") == 0) {
+        if (isize.compare("i8") == 0) {
+            type = "ult";
+        } else {
+            type = "slt";
+        }
+    } else if (op.compare(">") == 0) {
+        if (isize.compare("i8") == 0) {
+            type = "ugt";
+        } else {
+            type = "sgt";
+        }
+    } else if (op.compare("<=") == 0) {
+        if (isize.compare("i8") == 0) {
+            type = "ule";
+        } else {
+            type = "sle";
+        }
+    } else if (op.compare(">=") == 0) {
+        if (isize.compare("i8") == 0) {
+            type = "uge";
+        } else {
+            type = "sge";
+        }
+    }
+    return type;
+}
+
+string findIRSize(string left_type, string right_type) {
+    string isize;
+    if (left_type.compare("INT") == 0 || right_type.compare("INT") == 0) {
+        isize = "i32";
+    } else {
+        isize = "i8";
+    }
+    return isize;
+}
 /************************ CALL ************************/
 // Call: ID()
 Call::Call(Node *ID) {
@@ -242,22 +374,45 @@ Exp::Exp(Node *terminal, string str) : Node(terminal->value) {
     DEBUG(cout<<str<<endl;)
     this->type = "";
     this->boolValue = false;
+    vector<pair<int, BranchLabelIndex>> false_list;
+    vector<pair<int, BranchLabelIndex>> true_list;
+    this->falseList = false_list;
+    this->trueList = true_list;
+
     if (str.compare("NUM") == 0) {
         this->type = "INT";
+        this->reg = pool.getReg();
+        string command = prepareCommandForEmit(false, this->reg, this->type, terminal->value);
+        buffer.emit(command);
     } else if (str.compare("B") == 0) {
         if (stoi(terminal->value) > 255) {
             output::errorByteTooLarge(yylineno, terminal->value);
             exit(0);
         }
         this->type = "BYTE";
+        this->reg = pool.getReg();
+        string command = prepareCommandForEmit(false, this->reg, this->type, terminal->value);
+        buffer.emit(command);
     } else if (str.compare("STRING") == 0) {
         this->type = "STRING";
+        this->reg = pool.getReg();
+        terminal->value[terminal->value.size() - 1] = '\00';
+        string command = prepareCommandForEmit(false, this->reg, this->type, "", terminal->value.size());
+        string command_global = prepareCommandForEmit(true, this->reg, this->type, terminal->value,
+                                                      terminal->value.size());
+        buffer.emit(command);
+        buffer.emit(command_global);
     } else if (str.compare("TRUE") == 0) {
         this->boolValue = true;
         this->type = "BOOL";
+        this->reg = pool.getReg();
+        string command = prepareCommandForEmit(false, this->reg, this->type, "true");
+        buffer.emit(command);
     } else {
         this->boolValue = false;
         this->type = "BOOL";
+        string command = prepareCommandForEmit(false, this->reg, this->type, "false");
+        buffer.emit(command);
     }
 
 }
@@ -272,13 +427,24 @@ Exp::Exp(Node *Not, Exp *exp) {
     }
     this->type = "BOOL";
     this->boolValue = !exp->boolValue;
+    this->reg = pool.getReg();
+    this->falseList = exp->trueList;
+    this->trueList = exp->falseList;
+    string command = prepareCommandForEmit(false, this->reg, this->type, to_string(exp->reg));
+    buffer.emit(command);
 }
 
 // Exp op Exp
-Exp::Exp(Exp *left, Node *op, Exp *right, string str) {
+Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     FUNC_ENTRY()
     this->type = "";
     this->boolValue = false;
+    this->reg = pool.getReg();
+    vector<pair<int, BranchLabelIndex>> false_list;
+    vector<pair<int, BranchLabelIndex>> true_list;
+    this->falseList = false_list;
+    this->trueList = true_list;
+
     DEBUG(cout<<"left:"<<left->type<<", op:"<<op->value<<", right:"<<right->type<<", srting:"<<str<<endl;)
     // RELOP checking if both exp are numbers
     if ((left->type.compare("INT") == 0 || left->type.compare("BYTE") == 0) &&
