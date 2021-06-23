@@ -278,63 +278,6 @@ string prepareBranchCommand(string reg = "") {
     return ret;
 }
 
-string findRELOPType(string op, string isize) {
-    string type = "";
-    if (op.compare("==") == 0) {
-        type = "eq";
-    } else if (op.compare("!=") == 0) {
-        type = "ne";
-    } else if (op.compare("<") == 0) {
-        if (isize.compare("i8") == 0) {
-            type = "ult";
-        } else {
-            type = "slt";
-        }
-    } else if (op.compare(">") == 0) {
-        if (isize.compare("i8") == 0) {
-            type = "ugt";
-        } else {
-            type = "sgt";
-        }
-    } else if (op.compare("<=") == 0) {
-        if (isize.compare("i8") == 0) {
-            type = "ule";
-        } else {
-            type = "sle";
-        }
-    } else if (op.compare(">=") == 0) {
-        if (isize.compare("i8") == 0) {
-            type = "uge";
-        } else {
-            type = "sge";
-        }
-    }
-    return type;
-}
-
-string findOPType(string op) {
-    string type = "";
-    if (op.compare("+") == 0) {
-        type = "add";
-    } else if (op.compare("-") == 0) {
-        type = "sub";
-    } else if (op.compare("*") == 0) {
-        type = "mul";
-    } else if (op.compare("/") == 0) {
-        type = "div";
-    }
-    return type;
-}
-
-string findIRSize(string left_type, string right_type) {
-    string isize;
-    if (left_type.compare("INT") == 0 || right_type.compare("INT") == 0) {
-        isize = "i32";
-    } else {
-        isize = "i8";
-    }
-    return isize;
-}
 /************************ CALL ************************/
 // Call: ID()
 Call::Call(Node *ID) {
