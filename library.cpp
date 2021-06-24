@@ -20,8 +20,6 @@ vector<int> offsetStack;
 /// Code Buffer
 //CodeBuffer &buffer = CodeBuffer::instance();
 IRManager &llvm = IRManager::instance();
-/// Registers
-//TODO
 
 void printTableStack(){
     for(int i=0; i<tableStack.size(); i++){
