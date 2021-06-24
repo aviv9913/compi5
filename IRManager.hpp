@@ -7,7 +7,6 @@
 
 #include "hw3_output.hpp"
 #include "bp.hpp"
-#include "library.h"
 
 using namespace std;
 typedef pair<int, BranchLabelIndex> bp_pair;
