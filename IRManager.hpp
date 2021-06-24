@@ -7,6 +7,7 @@
 
 #include "hw3_output.hpp"
 #include "bp.hpp"
+#include "library.h"
 
 using namespace std;
 typedef pair<int, BranchLabelIndex> bp_pair;
@@ -27,7 +28,7 @@ string genLabel() {
     return CodeBuffer::instance().genLabel();
 }
 
-vector<bp_pair> makeList(bp_pair item) {
+vector<bp_pair> ll(bp_pair item) {
     return CodeBuffer::instance().makelist(item);
 }
 
@@ -100,27 +101,36 @@ int emitUnconditional() {
 
 int emitCondition(string reg1, string relop, string reg2) {
     string res_reg = getReg();
-    emit(res_reg + " = " + getRELOPType(op) + reg1 + ", " + reg2);
+    emit(res_reg + " = " + getRELOPType(relop) + reg1 + ", " + reg2);
     return emitConditionFromResult(res_reg);
 }
 
-int emitZ(string reg1, string reg2) {
+int emitZext(string reg1, string reg2) {
     return emit(reg1 + " = zext i8 " + reg2 + " to i32");
 }
 
 int emitZext(Exp *left, Exp *right) {
     if (left->type == "BYTE") {
-        reg_l = getReg();
-        return emitZ(reg_l, left->reg);
+        string reg_l = getReg();
+        return emitZext(reg_l, left->reg);
     } else if (right->type == "BYTE") {
-        reg_r = getReg();
-        return emitZ(reg_r, right->reg);
+        string reg_r = getReg();
+        return emitZext(reg_r, right->reg);
     }
     return -1; // shouldn't get here
 }
 
 int emitPhi(string reg1, string reg2, string value, string label) {
     return emit(reg1 + " = phi i1 [" + reg2 + ", " + value + "],[0, " + label + "]");
+}
+
+void emitStore(string dataReg, string ptrReg, string ptrRegType= "i32*", string dataRegType="i32"){
+    if(ptrRegType.find("*") == string::npos)
+    {
+        cerr<<"emitStore: no '*' in ptrReg type";
+        exit(1);
+    }
+    emit("store " + dataRegType +" %" + dataReg + ", " + ptrRegType +" %" + ptrReg);
 }
 
 class IRManager {
@@ -157,7 +167,7 @@ private:
 
 public:
     IRManager() { addExitAndPrintFunctions(); }
-    instance() {
+    static IRManager &instance(){
         static IRManager inst;
         return inst;
     }
@@ -185,6 +195,15 @@ public:
         return reg;
     }
 
+    string assignToReg(string value, string type="i32", string reg = "") {
+        if (reg.empty()) {
+            reg = getReg();
+        }
+        emit(reg + " = add " + type + " 0," + value);
+        return reg;
+    }
+
+    //TODO: how we are using this? seems like value should contain '%'
     string assignBoolToReg(string value, string reg = "") {
         if (reg.empty()) {
             reg = getReg();
@@ -264,6 +283,14 @@ public:
         res.push_back(new_reg);
         res.push_back(end_l);
         return res;
+    }
+
+    void emitGetElementPtr(string elementReg, string ptrVar, int size, int index){
+        emit(
+            "%" + elementReg + " = getelementptr [" + to_string(size) + " x i32]," +
+            " [" + to_string(size) + " x i32]* %" + ptrVar + "," +
+            "i32 0, i32 " + to_string(index)
+        );
     }
 };
 

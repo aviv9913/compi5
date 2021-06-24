@@ -5,6 +5,8 @@
 #ifndef COMPI3_LIBRARY_H
 #define COMPI3_LIBRARY_H
 
+#include <cstring>
+#include <sstream>
 #include <memory>
 #include <iostream>
 #include <string>
@@ -12,7 +14,6 @@
 #include <stack>
 #include "hw3_output.hpp"
 #include "bp.hpp"
-#include "IRManager.hpp"
 
 #if 1
 #define FUNC_ENTRY()  \
@@ -68,6 +69,8 @@ void incLoop();
 void endProgram();
 void incCase();
 void decCase();
+
+
 string getLLVMType(string type);
 
 class Node {
@@ -291,7 +294,7 @@ public:
 
     // IF (Exp) Statement, IF (Exp) Statement ELSE Statement
     // WHILE (Exp) Statement
-    Statement(string str, Exp *exp);
+    Statement(string str, Exp *exp, Statement *st);
 
     // BREAK; CONTINUE;
     Statement(Node *terminal);
@@ -301,14 +304,18 @@ public:
 
 };
 
+Statement *addElseStatement(Statement* stIf,Statement* stElse);
+
 // Statements
 class Statements : public Node {
 public:
+    vector <pair<int,BranchLabelIndex>> breakList;
+    vector <pair<int,BranchLabelIndex>> continueList;
     // Statement
-    Statements(Statement *st) {};
+    Statements(Statement *st);
 
     // Statements Statement
-    Statements(Statements *sts, Statement *st) {};
+    Statements(Statements *sts, Statement *st);
 };
 
 void enterArgsToStackTable(Formals *fm);
