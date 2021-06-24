@@ -423,6 +423,14 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     else if (left->type.compare("BOOL") == 0 &&
             right->type.compare("BOOL") == 0) {
         this->type = "BOOL";
+        if (!right->instruction.empty()) {
+            this->instruction = right->instruction;
+        } else {
+            this->instruction = shortC->instruction;
+        }
+        vector<string> bool_res = llvm.boolop(left->reg, right->reg, op->value, this->instruction, shortC);
+        this->reg = bool_res[0];
+        end_instr = bool_res[1];
         // need to evaluate the bool value of left and right
         if (str.compare("AND") == 0 &&
             op->value.compare("and") == 0) {
@@ -439,6 +447,9 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
         output::errorMismatch(yylineno);
         exit(0);
     }
+    if (!end_instr.empty()) {
+        this->instruction = end_instr;
+    }
     DEBUG(cout<<"type after calc:"<<this->type<<endl;)
 }
 
@@ -448,6 +459,10 @@ Exp::Exp(Exp *exp) {
     this->value = exp->value;
     this->type = exp->type;
     this->boolValue = exp->boolValue;
+    this->reg = exp->reg;
+    this->instruction = exp->instruction;
+    this->trueList = exp->trueList;
+    this->falseList = exp->falseList;
 }
 
 // ID

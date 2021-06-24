@@ -96,7 +96,7 @@ int emitConditionFromResult(string res) {
 }
 
 int emitUnconditional() {
-    emit("br label @");
+    return emit("br label @");
 }
 
 int emitCondition(string reg1, string relop, string reg2) {
@@ -118,6 +118,10 @@ int emitZext(Exp *left, Exp *right) {
         return emitZ(reg_r, right->reg);
     }
     return -1; // shouldn't get here
+}
+
+int emitPhi(string reg1, string reg2, string value, string label) {
+    return emit(reg1 + " = phi i1 [" + reg2 + ", " + value + "],[0, " + label + "]");
 }
 
 class IRManager {
@@ -235,6 +239,33 @@ public:
         return new_reg;
     }
 
+    vector<string> boolop(string left_reg, string right_reg, string op_type, string instr, P *short_circuit){
+        vector<string> res;
+        string new_reg = getReg();
+        string first_l;
+        string second_l;
+        string end_l = genLabel();
+        int loc2 = emitUnconditional();
+        int loc3 = emitUnconditional();
+
+        if (op_type == "and") {
+            second_l = genLabel(); // left false
+            emitPhi(new_reg, right_reg, instr, second_l);
+            first_l = short_circuit->instruction;
+        } else if (op_type == "or") {
+            first_l = genLabel(); // left true
+            emitPhi(new_reg, right_reg, instr, first_l);
+            second_l = short_circuit->instruction;
+        }
+        bpatch(makeList(bp_pair(short_circuit->loc, FIRST)), first_l);
+        bpatch(makeList(bp_pair(short_circuit->loc, SECOND)), second_l);
+        bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
+        bpatch(makeList(bp_pair(loc3, FIRST)), end_l);
+        
+        res.push_back(new_reg);
+        res.push_back(end_l);
+        return res;
+    }
 };
 
 
