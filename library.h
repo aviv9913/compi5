@@ -12,6 +12,7 @@
 #include <stack>
 #include "hw3_output.hpp"
 #include "bp.hpp"
+#include "IRManager.hpp"
 
 #if 1
 #define FUNC_ENTRY()  \

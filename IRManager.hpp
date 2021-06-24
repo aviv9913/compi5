@@ -49,26 +49,31 @@ string getReg() {
     return "%t" + to_string(reg_count++);
 }
 
+string getGlobalReg(string reg) {
+    string global_reg = reg.replace(0, 1, "@");
+    return global_reg;
+}
+
 string getNewStr() {
     static int str_count = 0;
     return "@.Str" + to_string(str_count++);
 }
 
-string getRELOPType(string op, string isize) {
+string getRELOPType(string op, bool isSigned) {
     if (op == "==") return "icmp eq i32";
     if (op == "!=") return "icmp ne i32";
-    if (op == "<") return (isize == "i8") ? "icmp ult i8" : "icmp slt i32";
-    if (op == ">") return (isize == "i8") ? "icmp ugt i8" : "icmp sgt i32";
-    if (op == "<=") return (isize == "i8") ? "icmp ule i8" : "icmp sle i32";
-    if (op == ">=") return (isize == "i8") ? "icmp uge i8" : "icmp sge i32";
+    if (op == "<") return isSigned ? "icmp ult i8" : "icmp slt i32";
+    if (op == ">") return isSigned ? "icmp ugt i8" : "icmp sgt i32";
+    if (op == "<=") return isSigned ? "icmp ule i8" : "icmp sle i32";
+    if (op == ">=") return isSigned ? "icmp uge i8" : "icmp sge i32";
     return "";
 }
 
-string getArithmeticType(string op, string isize) {
+string getArithmeticType(string op, bool isSigned) {
     if (op == "+") return "add i32";
     if (op == "-") return "sub i32";
     if (op == "*") return "mul i32";
-    if (op == "/") return (isize == "i8") ? "udiv i8" : "sdiv i8";
+    if (op == "/") return isSigned ? "udiv i8" : "sdiv i32";
     return "";
 }
 
@@ -83,7 +88,7 @@ string getIRSize(string left_type, string right_type) {
 }
 
 void exitProgram() {
-    emit("call void @exit(i32 1)");
+    emit("call void @exit(i32 0)");
 }
 
 int emitConditionFromResult(string res) {
@@ -98,6 +103,21 @@ int emitCondition(string reg1, string relop, string reg2) {
     string res_reg = getReg();
     emit(res_reg + " = " + getRELOPType(op) + reg1 + ", " + reg2);
     return emitConditionFromResult(res_reg);
+}
+
+int emitZ(string reg1, string reg2) {
+    return emit(reg1 + " = zext i8 " + reg2 + " to i32");
+}
+
+int emitZext(Exp *left, Exp *right) {
+    if (left->type == "BYTE") {
+        reg_l = getReg();
+        return emitZ(reg_l, left->reg);
+    } else if (right->type == "BYTE") {
+        reg_r = getReg();
+        return emitZ(reg_r, right->reg);
+    }
+    return -1; // shouldn't get here
 }
 
 class IRManager {
@@ -119,32 +139,101 @@ private:
     }
 
     void handleZeroDivision(string reg) {
-        int loc = emitCondition("0", "!=", reg);
-        string bad_zero_label = genLabel();
-        string error_msg = addGlobalString("Error division by zero");
-        emit("call void @print(i8* " + error_msg + ")");
+        emitCondition(reg, "=", "0");
+        int b_first = emitConditionFromResult(reg);
+        string l_first = genLabel();
+        string zero_reg = addGlobalString("Error division by zero");
+        emit("call void @print(i8* " + zero_reg + ")");
         exitProgram();
-        int end_error = emitUnconditional();
-        string good_zero_label = genLabel();
-        bpatch(makeList(bp_pair(loc, FIRST)), good_zero_label);
-        bpatch(makeList(bp_pair(end_error, FIRST)), good_zero_label);
-        bpatch(makeList(bp_pair(loc, SECOND)), bad_zero_label);
+        int b_second = emitUnconditional();
+        string l_second = genLabel();
+        bpatch(makeList(bp_pair(b_first, FIRST)), l_first);
+        bpatch(makeList(bp_pair(b_first, SECOND)), l_second);
+        bpatch(makeList(bp_pair(b_second, FIRST)), l_second);
     }
 
 public:
     IRManager() { addExitAndPrintFunctions(); }
+    instance() {
+        static IRManager inst;
+        return inst;
+    }
 
     string addGlobalString(string s){
-        string new_str= freshString();
+//        string new_str= freshString();
         string string_size= to_string(s.length() + 1);
-        emitGlobal(new_str + " = constant [" + string_size + "x i8] c\"" + s + "\\00\"");
         string reg = getReg();
-        emit(reg + " = getelementptr [" + string_size + "x i8] , ["+ string_size + "x i8] * " +
-                new_str + ", i32 0, i32 0");
+        string global_reg = getGlobalReg(reg);
+        emitGlobal(global_reg + " = constant [" + string_size + "x i8] c\"" + s + "\\00\"");
+        emit(reg + " = getelementptr [" + string_size + "x i8] , ["+ string_size + "x i8]* " +
+                reg + ", i32 0, i32 0");
         return reg;
     }
 
+    string assignToReg(string value, bool isSigned, string reg = "") {
+        if (reg.empty()) {
+            reg = getReg();
+        }
+        if (isSigned) {
+            emit(reg + " = add i8 0," + value);
+        } else {
+            emit(reg + " = add i32 0," + value);
+        }
+        return reg;
+    }
 
+    string assignBoolToReg(string value, string reg = "") {
+        if (reg.empty()) {
+            reg = getReg();
+        }
+        if (value.find("%") == 0) { // find returns the pos of the symbol
+            emit(reg + " = add i1 1, " + value);
+        } else {
+            emit(reg + " = add i1 0," + value);
+        }
+        return reg;
+    }
+
+    string relop(Exp *left, Exp *right, string op_type, bool isSigned) {
+        string op = getRELOPType(op_type, isSigned);
+        string reg_l = left->reg;
+        string  reg_r = right->reg;
+        string new_reg = getReg();
+
+        if (!isSigned) {
+            if (left->type == "BYTE") {
+                reg_l = getReg();
+                emitZext(reg_l, left->reg);
+            } else if (right->type == "BYTE") {
+                reg_r = getReg();
+                emitZext(reg_r, right->reg);
+            }
+        }
+        emit(new_reg + " " + op + " " + reg_l + ", " + reg_r);
+        return new_reg;
+    }
+
+    string binop(Exp *left, Exp *right, string op_type, bool isSigned) {
+        string op = getArithmeticType(op_type, isSigned);
+        string reg_l = left->reg;
+        string reg_r = right->reg;
+        string new_reg = getReg();
+
+        if (op_type == "/") {
+            emitZext(left, right);
+            handleZeroDivision(right->reg);
+        }
+        if (!isSigned) {
+            emitZext(left, right);
+        }
+        emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
+        if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
+            reg_r = getReg();
+            emit(reg_r + " = trunc i32 " + new_reg + " to i8");
+            new_reg = reg_r;
+        }
+        return new_reg;
+    }
 
 };
 
