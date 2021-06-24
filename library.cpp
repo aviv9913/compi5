@@ -3,8 +3,8 @@
 //
 
 #include "library.h"
-#include <cstring>
-#include <sstream>
+#include "IRManager.hpp"
+
 extern char *yytext;
 
 /// Global variables
@@ -541,7 +541,7 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
         this->types.emplace_back("VOID");
         argString += ")";
     }
-    DEBUG(cout<<"Arguments string: "<<argString<<end;)
+    DEBUG(cout<<"Arguments string: "<<argString<<endl;)
     this->types.emplace_back(retType->value);
     // open new scope for func
 
@@ -550,34 +550,21 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
     currentFunc = this->value;
     currentFuncArgs = args->formals.size();
     string retTypeString = getLLVMType(retType->value);
-    //define i8 @function(i8,i8) {
-    buffer.emit(
+    emit(
       "define " + retTypeString + " @"+ this->value + argString + " {"
     );
-    //%stack = alloca [50 x i32] max 50 args on stack
-    buffer.emit("%stack = alloca [50 x i32]");
-    //%args = alloca [<size> x i32]
-    buffer.emit("%args = alloca [" + to_string(args->formals.size()) + " x i32]");
-    //TODO: reg pool
+    emit("%stack = alloca [50 x i32]");
+    emit("%args = alloca [" + to_string(args->formals.size()) + " x i32]");
     for(int i=0; i<args->formals.size(); ++i){
-        string ptrReg = pool.getReg();
-        //%reg = getelementptr [<size> x i32],[<size> x i32]* %argsArrayPtr, i32 0, i32 <argNum>
-        buffer.emit(
-                "%" + ptrReg + " = getelementptr [" + to_string(size) + " x i32]," +
-                " [" + to_string(size) + " x i32]* %args," +
-                "i32 0, i32 " +    to_string(currFuncArgs - i - 1));
-                );
+        string ptrReg = getReg();
+        llvm.emitGetElementPtr(ptrReg, "args", args->formals.size(), currentFuncArgs - i - 1);
         string dataReg = to_string(i);
         string argType = getLLVMType(args->formals[i]->type);
         if(argType != "i32"){
-            dataReg = pool.getReg();
-            //%reg = zext i8 %reg to i32
-            buffer.emit(
-                    "%" + dataReg + " = zext " + argType + " %" + to_string(i) + " to i32";
-                    )
+            dataReg = getReg();
+            emitZext(dataReg, to_string(i));
         }
-        //store i32 %reg, i32* %ptr
-        buffer.emit("store i32 %" + dataReg + ", i32* %" + ptrReg)
+        emitStore(dataReg, ptrReg);
     }
 }
 
@@ -604,6 +591,10 @@ Formals::Formals(FormalsList *formalsList) {
 // Statement-> (Statement)
 Statement::Statement(Statements *sts) {
     FUNC_ENTRY()
+    vector<pair<int, BranchLabelIndex>> tmpList1;
+    vector<pair<int, BranchLabelIndex>> tmpList2;
+    this->breakList = tmpList1;
+    this->continueList = tmpList2;
     data = "this used to be Statements";
 }
 
@@ -628,26 +619,16 @@ Statement::Statement(Type *type, Node *ID) {
 
     //Writing LLVM code
     this->data = "type id";
-    this->reg = pool.getReg();
     string expType = getLLVMType(type->value);
-    buffer.emit(
-            "%" + this->reg + " = add " + expType + " 0,0";
-            );
-    string ptr = pool.getReg();
-    //%reg= add i8 reg, reg
-    buffer.emit(
-            "%" + ptr + " = getelementptr [50 x i32], [50 x i32]*  %stack, i32 0, i32 " + to_string(offset);
-            );
+    this->reg = llvm.assignToReg(0, expType);
+    string ptrReg = getReg();
+    llvm.emitGetElementPtr(ptrReg, "stack", 50, offset);
     string dataReg = reg;
     if(expType != "i32"){
-        dataReg = pool.getReg();
-        //%reg = zext i8 reg to i32
-        buffer.emit(
-                "%" + dataReg + " = zext " + expType + " %" + reg + " to i32"
-        );
+        dataReg = getReg();
+        dataReg = emitZext(dataReg, reg);
     }
-    buffer.emit("store i32 %" + dataReg + ", i32* %" + ptr);
-
+    emitStore(dataReg, ptrReg);
 }
 
 
@@ -661,8 +642,8 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
         exit(0);
     }
     // checking that types match
-    if (type->value.compare(exp->type) != 0) {
-        if(!(type->value.compare("INT") == 0 && exp->type.compare("BYTE") == 0)){
+    if (type->value != exp->type) {
+        if(!(type->value == "INT" && exp->type == "BYTE")){
             output::errorMismatch(yylineno);
             exit(0);
         }
@@ -674,70 +655,46 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     tableStack.back()->symbols.emplace_back(new_entry);
 
     //Writing LLVM code
-    this->reg = pool.getReg();
-    string expType = getLLVMType();
+    this->reg = getReg();
+    string expType = getLLVMType(exp->type);
     string dataReg = exp->reg;
-    if(type->value.compare("INT") == 0 && exp->type.compare("BYTE") == 0){
+    if(type->value == "INT" && exp->type == "BYTE"){
         //%reg = zext i8 %reg to i32
-        dataReg = pool.getReg();
-        buffer.emit("%" + dataReg + " = zext i8 %" + exp->reg + " to i32");
+        dataReg = getReg();
+        emitZext(dataReg, exp->reg);
     }
-
-    buffer.emit(
-            "%" + this->reg + " = add" + expType + " 0,%" + dataReg
-            );
-    string ptrReg = pool.getReg();
-    buffer.emit(
-            "%" + this->reg + " = add " + expType + " 0,%" + dataReg
-            );
+    llvm.assignToReg(0, expType, dataReg);
+    string ptrReg = llvm.assignToReg(0, expType, dataReg);
     dataReg = reg;
     if(expType != "i32"){
-        dataReg = pool.getReg();
-        //%reg = zext i8 reg to i32
-        buffer.emit(
-                "%" + dataReg + " = zext " + expType + " %" + reg + " to i32"
-        );
+        dataReg = getReg();
+        dataReg = std::to_string(emitZext(dataReg, reg));
     }
-    buffer.emit("store i32 %" + dataReg + ", i32* %" + ptr);
+    emitStore(dataReg, ptrReg);
 }
 
 string emitCodeToBuffer(string data, string type, int offset){
-    string reg = pool.getReg();
+    string reg = getReg();
     string dataReg = data;
     string argType = getLLVMType(type);
     if(argType != "i32"){
-        dataReg = pool.getReg();
-        //%reg = zext i8 reg to i32
-        buffer.emit(
-                "%" + dataReg + " = zext " + argType + " %" + data + " to i32"
-        );
+        dataReg = getReg();
+        dataReg = std::to_string(emitZext(dataReg, data));
     }
-    buffer.emit(
-            "%" + reg + " = add i32 0,%" + dataReg
-            );
-    string ptrReg = pool.getReg();
+    llvm.assignToReg(0, reg=reg);
+    string ptrReg = getReg();
     if(offset >= 0){
-        buffer.emit(
-                "%" + ptrReg + " = getelementor [50 x i32], [50 x i32]* %stack, i32 0," +
-                "i32 " + to_string(offset)
-                );
+        llvm.emitGetElementPtr(ptrReg, "stack", 50, offset);
 
     } else if(offset < 0 && currentFuncArgs > 0){
-        buffer.emit(
-                "%" + ptr +
-                " = getelementptr [ " + to_string(currentFuncArgs) + "x i32]," +
-                " [" + to_string(currentFuncArgs) + " x i32]* %args," +
-                " i32 0," +
-                " i32 " + to_string(currentFuncArgs + offset)
-                );
+        llvm.emitGetElementPtr(ptrReg, "args", currentFuncArgs, currentFuncArgs+offset);
+
     } else{
         cout<<"Not suppose get here, currentFuncArgs = 0 and offset < 0"<<endl;
     }
 
-    buffer.emit("store i32 %" + reg + ", i32* %" + ptr);
+    emitStore(reg,ptrReg);
     return reg;
-    //%ptr = getelementptr inbounds[10 x i32]* %args, i32 0, i32 0
-    //store i32 %t3, i32* %ptr
 }
 
 // Statement-> ID = EXP;
@@ -777,7 +734,11 @@ Statement::Statement(Node *ID, Exp *exp) {
 // Statement-> Call;
 Statement::Statement(Call *call) {
     FUNC_ENTRY()
-    this->data = "this was a call for a function";
+    vector<pair<int, BranchLabelIndex>> listBreak;
+    this->breakList = listBreak;
+    vector<pair<int, BranchLabelIndex>> listContinue;
+    this->continueList = listContinue;
+    data = "this was a call for a function";
 }
 
 // Statement-> return;
@@ -794,7 +755,7 @@ Statement::Statement(RetType *retType) {
                 int size = tableStack[i]->symbols[j]->type.size();
                 if (tableStack[i]->symbols[j]->type.back().compare("VOID") == 0) {
                     this->data = "ret val of void";
-                    buffer.emit("ret void");
+                    emit("ret void");
                     return;
                 } else {
                     output::errorMismatch(yylineno);
@@ -817,7 +778,7 @@ Statement::Statement(Exp *exp) {
 
     if (exp->type.compare("VOID") == 0) {
         output::errorMismatch(yylineno);
-        exit(0);
+        exit(1);
     }
     for (int i = tableStack.size() -1; i >= 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
@@ -826,60 +787,101 @@ Statement::Statement(Exp *exp) {
                 if (tableStack[i]->symbols[j]->type[size - 1] == exp->type) {
                     this->data = exp->value;
                     string LLVMRetType = getLLVMType(exp->type);
-                    buffer.emit("ret " + LLVMRetType + " %"+exp->reg);
+                    emit("ret " + LLVMRetType + " %"+exp->reg);
                     return;
                 } else if (exp->type == "BYTE" && tableStack[i]->symbols[j]->type[size - 1] == "INT") {
                     this->data = exp->value;
-                    string dataReg = pool.getReg();
-                    buffer.emit(
-                            "%" + dataReg + " = zext i8 %" + exp->reg + " to i32"
-                            );
-                    buffer.emit("ret i32 %" + dataReg);
+                    string dataReg = getReg();
+                    emitZext(dataReg, exp->reg);
+                    emit("ret i32 %" + dataReg);
                     return;
                 } else {
                     output::errorMismatch(yylineno);
-                    exit(0);
+                    exit(1);
                 }
             }
         }
     }
     output::errorUndef(yylineno, "zazi bazazi2");
-    exit(0);
+    exit(1);
 }
 
 
 // if, if else, while
-Statement::Statement(string str, Exp *exp) {
+Statement::Statement(string str, Exp *exp, Statement *st) {
     FUNC_ENTRY()
     if (exp->type != "BOOL") {
         output::errorMismatch(yylineno);
-        exit(0);
+        exit(1);
+    }
+
+    if (st != nullptr) {
+        this->continueList = st->continueList;
+        this->breakList = st->breakList;
+    }
+    else{
+        vector<pair<int, BranchLabelIndex>> tmpList1;
+        vector<pair<int, BranchLabelIndex>> tmpList2;
+        this->breakList = tmpList1;
+        this->continueList = tmpList2;
     }
     this->data = "this was an if/ if else/ while";
+}
+
+Statement *addElseStatement(Statement *stIf, Statement *stElse) {
+    stIf->breakList = merge(stIf->breakList, stElse->breakList);
+    stIf->continueList = merge(stIf->continueList, stElse->continueList);
+    return stIf;
 }
 
 // break, continue
 Statement::Statement(Node *terminal) {
     FUNC_ENTRY()
-    DEBUG(cout<<"value:"<<terminal->value<<" ,loopCount:"<<loopCount<<" insideCase:"<<insideCase<<endl;)
-    if (terminal->value == "break") {
+    string terminalValue = terminal->value;
+    vector<pair<int, BranchLabelIndex>> tmpList1;
+    vector<pair<int, BranchLabelIndex>> tmpList2;
+    this->breakList = tmpList1;
+    this->continueList = tmpList2;
+
+    if (terminalValue == "break") {
         if(loopCount <= 0 && insideCase<=0){
             output::errorUnexpectedBreak(yylineno);
-            exit(0);
+            DEBUG(cout<<"value:"<<terminalValue<<" ,loopCount:"<<loopCount<<" insideCase:"<<insideCase<<endl;)
+            exit(1);
         }
     }
     else if(loopCount <= 0){
         output::errorUnexpectedContinue(yylineno);
-        exit(0);
+        DEBUG(cout<<"value:"<<terminalValue<<" ,loopCount:"<<loopCount<<" insideCase:"<<insideCase<<endl;)
+        exit(1);
     }
+
+    int location = emit("br label @");
+    if(insideCase <=0){
+        if(terminalValue == "break"){
+            this->breakList = makeList({location, FIRST});
+        } else {
+            this->continueList = makeList({location, FIRST});
+        }
+    }
+    //TODO: implement break inside case scenario
     this->data = "this was a break/ continue";
-    FUNC_EXIT()
 }
 
 // switch (Exp) {CaseList}
 Statement::Statement(Exp *exp, CaseList *caseList) {
     FUNC_ENTRY()
     this->data = "this was switch case";
+}
+
+Statements::Statements(Statement *st) {
+    this->breakList = st->breakList;
+    this->continueList = st->continueList;
+}
+
+Statements::Statements(Statements *sts, Statement *st) {
+    this->breakList = merge(sts->breakList, st->breakList);
+    this->continueList = merge(sts->continueList, st->continueList);
 }
 
 /************************ SWITCH CASE ************************/
@@ -917,4 +919,5 @@ Program::Program() {
     global->symbols.emplace_back(printi);
     tableStack.emplace_back(global);
     offsetStack.emplace_back(0);
+    //TODO: make sure all the default stuff get printed from addExitAndPrintFunctions();
 }

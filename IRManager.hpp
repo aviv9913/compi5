@@ -101,7 +101,7 @@ int emitUnconditional() {
 
 int emitCondition(string reg1, string relop, string reg2) {
     string res_reg = getReg();
-    emit(res_reg + " = " + getRELOPType(op) + reg1 + ", " + reg2);
+    emit(res_reg + " = " + getRELOPType(relop) + reg1 + ", " + reg2);
     return emitConditionFromResult(res_reg);
 }
 
@@ -138,6 +138,15 @@ string emitCall(string retType, string func_name, string args) {
     return new_reg;
 }
 
+void emitStore(string dataReg, string ptrReg, string ptrRegType= "i32*", string dataRegType="i32"){
+    if(ptrRegType.find("*") == string::npos)
+    {
+        cerr<<"emitStore: no '*' in ptrReg type";
+        exit(1);
+    }
+    emit("store " + dataRegType +" %" + dataReg + ", " + ptrRegType +" %" + ptrReg);
+}
+
 class IRManager {
 private:
     void addExitAndPrintFunctions() {
@@ -172,7 +181,7 @@ private:
 
 public:
     IRManager() { addExitAndPrintFunctions(); }
-    instance() {
+    static IRManager &instance(){
         static IRManager inst;
         return inst;
     }
@@ -298,6 +307,14 @@ public:
 
 
 
+
+    void emitGetElementPtr(string elementReg, string ptrVar, int size, int index){
+        emit(
+            "%" + elementReg + " = getelementptr [" + to_string(size) + " x i32]," +
+            " [" + to_string(size) + " x i32]* %" + ptrVar + "," +
+            "i32 0, i32 " + to_string(index)
+        );
+    }
 };
 
 
