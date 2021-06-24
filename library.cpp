@@ -232,6 +232,7 @@ Call::Call(Node *ID) {
             }
             if (i->type.size() == 2) {
                 this->value = i->type.back();
+                this->reg = emitCall(getLLVMType(this->value), ID->value, "()");
                 return; //if we reached this line, then we found the right function
             } else {
                 vector<string> empty = {""};
@@ -258,18 +259,28 @@ Call::Call(Node *ID, ExpList *paramList) {
                 output::errorUndefFunc(yylineno, ID->value);
                 exit(0);
             }
+            string args = "(";
             if (i->type.size() == 1 + paramList->expList.size()) {
                 for (int j = 0; j < paramList->expList.size(); ++j) {
                     if (paramList->expList[j].type == "BYTE" && i->type[j] == "INT") {
+                        string reg = getReg();
+                        emitZext(reg, paramList->expList[j].reg);
+                        args += getLLVMType("INT") + " " + reg + ",";
                         continue;
                     }
+                    args += getLLVMType(i->type[j]) + " " + paramList->expList[j].reg + ",";
                     if (paramList->expList[j].type != i->type[j]) {
                         i->type.pop_back(); // removing the return type of the function
                         output::errorPrototypeMismatch(yylineno, i->name, i->type);
                         exit(0);
                     }
                 }
+                args.back() = ')';
                 this->value = i->type.back();
+                this->reg = emitCall(getLLVMType(this->value), ID->value, args);
+                int loc = emitUnconditional();
+                this->instruction = genLabel();
+                bpatch(makeList(bp_pair(loc, FIRST)), this->instruction);
                 return; //if we reached this line, then we found the right function
             } else {
                 i->type.pop_back();

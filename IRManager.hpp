@@ -105,17 +105,17 @@ int emitCondition(string reg1, string relop, string reg2) {
     return emitConditionFromResult(res_reg);
 }
 
-int emitZ(string reg1, string reg2) {
+int emitZext(string reg1, string reg2) {
     return emit(reg1 + " = zext i8 " + reg2 + " to i32");
 }
 
-int emitZext(Exp *left, Exp *right) {
+int checkTypeAndEmit(Exp *left, Exp *right) {
     if (left->type == "BYTE") {
         reg_l = getReg();
-        return emitZ(reg_l, left->reg);
+        return emitZext(reg_l, left->reg);
     } else if (right->type == "BYTE") {
         reg_r = getReg();
-        return emitZ(reg_r, right->reg);
+        return emitZext(reg_r, right->reg);
     }
     return -1; // shouldn't get here
 }
@@ -126,6 +126,16 @@ int emitPhi(string reg1, string reg2, string value, string label) {
 
 int emitTrunc(string reg1, string reg2, string type) {
     return emit(reg1 + " = trunc i32 " + reg2 + " to " + type);
+}
+
+string emitCall(string retType, string func_name, string args) {
+    string new_reg = getReg();
+    if (retType == "void") {
+        emit("call " + retType + " @" + func_name + " " + args);
+    } else {
+        emit(new_reg + " = call " + retType + " @" + func_name + " " + args);
+    }
+    return new_reg;
 }
 
 class IRManager {
@@ -209,13 +219,7 @@ public:
         string new_reg = getReg();
 
         if (!isSigned) {
-            if (left->type == "BYTE") {
-                reg_l = getReg();
-                emitZext(reg_l, left->reg);
-            } else if (right->type == "BYTE") {
-                reg_r = getReg();
-                emitZext(reg_r, right->reg);
-            }
+            checkTypeAndEmit(left, right);
         }
         emit(new_reg + " " + op + " " + reg_l + ", " + reg_r);
         return new_reg;
@@ -228,11 +232,11 @@ public:
         string new_reg = getReg();
 
         if (op_type == "/") {
-            emitZext(left, right);
+            checkTypeAndEmit(left, right);
             handleZeroDivision(right->reg);
         }
         if (!isSigned) {
-            emitZext(left, right);
+            checkTypeAndEmit(left, right);
         }
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
