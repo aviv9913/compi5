@@ -173,103 +173,50 @@ string getLLVMType(string type) {
     }
     return "i32"; // int
 }
-//TODO: add all below to library.h
-string prepareCommandForEmit(bool isGlobal, string reg, string type, string value = "", int size = 0) {
-    std::stringstream command;
-    if (isGlobal){
-        if (type.compare("STRING") == 0) {
-            command << "@";
-            command << reg;
-            command << "= constant [";
-            command << to_string(size);
-            command << " x i8] c\"";
-            command << value;
-            command << "\"";
-            string ret(command.str());
-            return ret;
-        }
-    } else {
-        if (type.compare("STRING") == 0) {
-            command << "%";
-            command << reg;
-            command << "= getelementptr [";
-            command << to_string(size);
-            command << " x i8], [";
-            command << to_string(size);
-            command << " x i8]* @";
-            command << reg;
-            command << ", i8 0, i8 0";
-            string ret(command.str());
-            return ret;
-        } else if (type.compare("INT") == 0) {
-            command << "%";
-            command << reg;
-            command << " = add i32 0,";
-            command << value;
-            string ret(command.str());
-            return ret;
-        } else if (type.compare("BYTE") == 0) {
-            command << "%";
-            command << reg;
-            command << " = add i8 0,";
-            command << value;
-            string ret(command.str());
-            return ret;
-        } else if (type.compare("BOOL") == 0) {
-            command << "%";
-            command << reg;
-            command << " = add i1 ";
-            if (value.compare("true") == 0) {
-                command << "0,1";
-            } else if (value.compare("false") == 0) {
-                command << "0,0";
-            } else {
-                command << "1, %";
-                command << value;
-            }
-            string ret(command.str());
-            return ret;
-        }
-    }
-    return ""; // shouldn't get here
-}
-
-string prepareRELOPCommandForEmit(string reg1, string reg2, string isize, string reg3 = "", string relop = ""){
-    std::stringstream command;
-    if (relop.empty() && reg3.empty()) {
-        command << "%";
-        command << reg1;
-        command << " = zext i8 %";
-        command << reg2;
-        command << " to ";
-        command << isize;
-        string ret(command.str());
-        return ret;
-    } else {
-        command << "%";
-        command << reg1;
-        command << " = icmp ";
-        command << relop;
-        command << " ";
-        command << isize;
-        command << " %";
-        command << reg2;
-        if (reg3.compare("cond") == 0) {
-            command << ", 0";
-        } else {
-            command << ", %";
-            command << reg3;
-        }
-        string ret(command.str());
-        return ret;
-    }
-}
 
 bool isSigned(string left_type, string right_type = "") {
     if (left_type == "INT" || (!right_type.empty() && right_type == "INT")) {
         return false;
     }
     return true;
+}
+
+/************************ bpatching and some ************************/
+Node* castExpToP(Exp *left) {
+    Node *temp = new P(left);
+    return temp;
+}
+
+void ifBPatch(M *label, Exp *exp) {
+    int loc = emitUnconditional();
+    string end_l = genLabel();
+    bpatch(exp->trueList, label->instruction);
+    bpatch(exp->falseList, end_l);
+    bpatch(makeList(bp_pair(loc, FIRST)), end_l);
+}
+
+void ifElseBPatch(M* m_label, N* n_label, Exp *exp) {
+    int loc2 = emitUnconditional();
+    string end_l = genLabel();
+    bpatch(exp->trueList, m_label->instruction);
+    bpatch(exp->falseList, m_label->instruction);
+    bpatch(makeList(bp_pair(n_label->loc, FIRST)), end_l);
+    bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
+}
+
+/************************ M, N, P ************************/
+M::M() {
+    this->instruction = genLabel();
+}
+
+N::N() {
+    this->loc = emitUnconditional();
+    this->instruction = genLabel();
+}
+
+P::P(Exp *left) {
+    this->loc = emitConditionFromResult(left->reg);
+    this->instruction = genLabel();
 }
 
 /************************ CALL ************************/
@@ -468,12 +415,17 @@ Exp::Exp(Exp *exp) {
 // ID
 Exp::Exp(Node *ID) {
     FUNC_ENTRY()
+    vector<bp_pair> false_list;
+    vector<bp_pair> true_list;
+    this->falseList = false_list;
+    this->trueList = true_list;
     for (int i = tableStack.size()-1; i > 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
             if (tableStack[i]->symbols[j]->name == ID->value) {
                 this->value = ID->value;
                 this->type = tableStack[i]->symbols[j]->type.back();
                 this->boolValue = false;
+                this->reg = llvm.loadVar(tableStack[i]->symbols[j]->offset, currentFuncArgs, this->type);
                 return;
             }
         }
@@ -487,6 +439,12 @@ Exp::Exp(Call *call) {
     FUNC_ENTRY()
     this->type = call->value;
     this->boolValue =false;
+    this->reg = call->reg;
+    this->instruction = call->instruction;
+    vector<bp_pair> false_list;
+    vector<bp_pair> true_list;
+    this->falseList = false_list;
+    this->trueList = true_list;
 }
 
 // bool check
@@ -499,6 +457,11 @@ Exp::Exp(Exp *exp, string str) {
     this->value = exp->value;
     this->type = exp->type;
     this->boolValue = exp->boolValue;
+    this->reg = exp->reg;
+    this->instruction = exp->instruction;
+    int loc = emitConditionFromResult(this->reg);
+    this->trueList = makeList(bp_pair(loc, FIRST));
+    this->falseList = makeList(bp_pair(loc, SECOND));
 }
 
 

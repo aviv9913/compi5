@@ -124,6 +124,10 @@ int emitPhi(string reg1, string reg2, string value, string label) {
     return emit(reg1 + " = phi i1 [" + reg2 + ", " + value + "],[0, " + label + "]");
 }
 
+int emitTrunc(string reg1, string reg2, string type) {
+    return emit(reg1 + " = trunc i32 " + reg2 + " to " + type);
+}
+
 class IRManager {
 private:
     void addExitAndPrintFunctions() {
@@ -233,7 +237,7 @@ public:
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
             reg_r = getReg();
-            emit(reg_r + " = trunc i32 " + new_reg + " to i8");
+            emitTrunc(reg_r, new_reg, "i8");
             new_reg = reg_r;
         }
         return new_reg;
@@ -261,11 +265,35 @@ public:
         bpatch(makeList(bp_pair(short_circuit->loc, SECOND)), second_l);
         bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
         bpatch(makeList(bp_pair(loc3, FIRST)), end_l);
-        
+
         res.push_back(new_reg);
         res.push_back(end_l);
         return res;
     }
+
+    string loadVar(int offset, int current_func_args, string type) {
+        string new_reg = getReg();
+        string ptr_reg = getReg();
+        if (offset >= 0) {
+            emit(ptr_reg + " = getelementptr [ 50 x i32], [ 50 x i32]* %stack, i32 0, i32 " + to_string(offset));
+        } else if (offset < 0 && current_func_args > 0) {
+            emit(ptr_reg + " = getelementptr [ " + to_string(current_func_args) + " x i32], [ " +
+            to_string(current_func_args) + " x i32]* %args, i32 0, i32 " + to_string(current_func_args + offset));
+        } else {
+            cout << "ALL HELL BREAK LOOSE" << endl;
+        }
+        emit(new_reg + "= load i32, i32* " + ptr_reg);
+        string id_type = getLLVMType(type);
+        if (id_type != "i32") {
+            string data_reg = getReg();
+            emitTrunc(data_reg, new_reg, id_type);
+            new_reg = data_reg;
+        }
+        return new_reg;
+    }
+
+
+
 };
 
 
