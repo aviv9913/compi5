@@ -51,6 +51,7 @@ public:
 };
 
 // declaring a few classes, all of them inherent from Node
+class Node;
 class Formals;
 class ExpList;
 class Statements;

@@ -56,10 +56,10 @@ void decLoop(N *first, P *second, Statement *st) {
     bpatch(makeList(bp_pair(new_loc, FIRST)), first->code);
 
     if (st->breakList.size() != 0) {
-        buffer.bpatch(st->breakList, new_label);
+        bpatch(st->breakList, new_label);
     }
     if (st->continueList.size() != 0) {
-        buffer.bpatch(st->continueList, first->code);
+        bpatch(st->continueList, first->code);
     }
 }
 
@@ -118,7 +118,7 @@ void endProgram() {
     }
     closeScope();
     printCodeBuffer();
-    printCodeBuffer()
+    printGlobalBuffer();
 }
 
 void endCurrentFunc(RetType *retType) {

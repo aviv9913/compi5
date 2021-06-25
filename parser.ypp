@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include "library.h"
+#include "IRManager.hpp"
 #include "hw3_output.hpp"
 using namespace std;
 extern int yylex();
@@ -123,8 +124,8 @@ Type:
 
 Exp:
     LPAREN Exp RPAREN{$$= new Exp(dynamic_cast<Exp*> ($2));}
-    | Exp ADD Exp{$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "ADD");}
-    | Exp MUL Exp{$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "MUL");}
+    | Exp ADD {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "ADD", dynamic_cast<P*> ($3));}
+    | Exp MUL {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "MUL", dynamic_cast<P*> ($3));}
     | ID{$$= new Exp($1);}
     | Call{$$= new Exp(dynamic_cast<Call*>($1));}
     | NUM{$$= new Exp($1, "NUM");}
@@ -135,8 +136,8 @@ Exp:
     | NOT Exp{$$= new Exp($1, dynamic_cast<Exp*>($2));}
     | Exp AND {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "AND", dynamic_cast<P*> ($3));}
     | Exp OR {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "OR", dynamic_cast<P*> ($3));}
-    | Exp RELOPN Exp{$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPN");}
-    | Exp RELOPL Exp{$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPL");};
+    | Exp RELOPN {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "RELOPN", dynamic_cast<P*> ($3));}
+    | Exp RELOPL {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "RELOPL", dynamic_cast<P*> ($3));};
 
 CaseList:
     CaseDecl CaseList{$$= new CaseList(dynamic_cast<CaseDecl*>($1), dynamic_cast<CaseList*>($2));}
