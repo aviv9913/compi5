@@ -70,8 +70,8 @@ void endProgram();
 void incCase();
 void decCase();
 
-
 string getLLVMType(string type);
+Node* castExpToP(Exp *left);
 
 class Node {
 public:

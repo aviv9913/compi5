@@ -100,9 +100,9 @@ Statement:
           ifElseBp(dynamic_cast<M*> ($6), dynamic_cast<N*> ($11), dynamic_cast<Exp*> ($3));
           $$ = addElseStatement(dynamic_cast<Statement*>($9), dynamic_cast<Statement*>($12));
       }
-    | WHILE LPAREN N Exp RPAREN {$$= docompare(dynamic_cast<Exp*> ($4));}
-     {$$= new Statement("while", dynamic_cast<Exp*>($3)); inLoop();} OSM Statement CSM
-    {outLoop(dynamic_cast<N*> ($3),dynamic_cast<P*> ($6),dynamic_cast<Statement*> ($9)); $$ = $7;} //Original "<Statement*> ($9)), $$ = $7;"
+    | WHILE LPAREN N Exp RPAREN {$$= castExpToP(dynamic_cast<Exp*> ($4));}
+     {$$= new Statement("while", dynamic_cast<Exp*>($3)); incLoop();} OSM Statement CSM
+    {decLoop(dynamic_cast<N*> ($3),dynamic_cast<P*> ($6),dynamic_cast<Statement*> ($9)); $$ = $7;} //Original "<Statement*> ($9)), $$ = $7;"
     | BREAK SC{$$= new Statement($1);}
     | CONTINUE SC{$$= new Statement($1);}
     | SWITCH LPAREN IntCheck RPAREN LBRACE OSM CaseList CSM RBRACE{$$= new Statement(dynamic_cast<Exp*>($3),
@@ -133,8 +133,8 @@ Exp:
     | TRUE{$$= new Exp($1, "TRUE");}
     | FALSE{$$= new Exp($1, "FALSE");}
     | NOT Exp{$$= new Exp($1, dynamic_cast<Exp*>($2));}
-    | Exp AND {$$= docompare(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "AND", dynamic_cast<P*> ($3));}
-    | Exp OR {$$= docompare(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "OR", dynamic_cast<P*> ($3));}
+    | Exp AND {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "AND", dynamic_cast<P*> ($3));}
+    | Exp OR {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "OR", dynamic_cast<P*> ($3));}
     | Exp RELOPN Exp{$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPN");}
     | Exp RELOPL Exp{$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPL");};
 

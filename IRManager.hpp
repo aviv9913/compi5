@@ -101,7 +101,7 @@ int emitUnconditional() {
 
 int emitCondition(string reg1, string relop, string reg2) {
     string res_reg = getReg();
-    emit(res_reg + " = " + getRELOPType(relop) + reg1 + ", " + reg2);
+    emit(res_reg + " = " + getRELOPType(relop, false) + reg1 + ", " + reg2);
     return emitConditionFromResult(res_reg);
 }
 
@@ -110,12 +110,11 @@ int emitZext(string reg1, string reg2) {
 }
 
 int checkTypeAndEmit(Exp *left, Exp *right) {
+    string reg = getReg();
     if (left->type == "BYTE") {
-        reg_l = getReg();
-        return emitZext(reg_l, left->reg);
+        return emitZext(reg, left->reg);
     } else if (right->type == "BYTE") {
-        reg_r = getReg();
-        return emitZext(reg_r, right->reg);
+        return emitZext(reg, right->reg);
     }
     return -1; // shouldn't get here
 }
@@ -145,6 +144,23 @@ void emitStore(string dataReg, string ptrReg, string ptrRegType= "i32*", string 
         exit(1);
     }
     emit("store " + dataRegType +" %" + dataReg + ", " + ptrRegType +" %" + ptrReg);
+}
+
+void ifBPatch(M *label, Exp *exp) {
+    int loc = emitUnconditional();
+    string end_l = genLabel();
+    bpatch(exp->trueList, label->instruction);
+    bpatch(exp->falseList, end_l);
+    bpatch(makeList(bp_pair(loc, FIRST)), end_l);
+}
+
+void ifElseBPatch(M* m_label, N* n_label, Exp *exp) {
+    int loc2 = emitUnconditional();
+    string end_l = genLabel();
+    bpatch(exp->trueList, m_label->instruction);
+    bpatch(exp->falseList, m_label->instruction);
+    bpatch(makeList(bp_pair(n_label->loc, FIRST)), end_l);
+    bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
 }
 
 class IRManager {

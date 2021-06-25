@@ -48,12 +48,12 @@ void incLoop() {
 void decLoop(N *first, P *second, Statement *st) {
     loopCount--;
 
-    int new_loc = buffer.emit("br label @");
-    string new_label = buffer.genLabel();
-    buffer.bpatch(buffer.makelist({first->loc, FIRST}), first->code);
-    buffer.bpatch(buffer.makelist({second->loc, FIRST}), second->code);
-    buffer.bpatch(buffer.makelist({second->loc, SECOND}), new_label);
-    buffer.bpatch(buffer.makelist({new_loc, FIRST}), first->code);
+    int new_loc = emitUnconditional();
+    string new_label = genLabel();
+    bpatch(makeList(bp_pair(first->loc, FIRST)), first->code);
+    bpatch(makeList(bp_pair(second->loc, FIRST)), second->code);
+    bpatch(makeList(bp_pair(second->loc, SECOND)), new_label);
+    bpatch(makeList(bp_pair(new_loc, FIRST)), first->code);
 
     if (st->breakList.size() != 0) {
         buffer.bpatch(st->breakList, new_label);
@@ -117,18 +117,18 @@ void endProgram() {
         exit(0);
     }
     closeScope();
-    buffer.printCodeBuffer();
-    buffer.printGlobalBuffer();
+    printCodeBuffer();
+    printCodeBuffer()
 }
 
 void endCurrentFunc(RetType *retType) {
     if (retType->value == "VOID") {
-        buffer.emit("ret void");
+        emit("ret void");
     } else {
         string type = getLLVMType(retType->value);
-        buffer.emit("ret " + type + "0");
+        emit("ret " + type + "0");
     }
-    buffer.emit("}");
+    emit("}");
     currentFunc = "";
     currentFuncArgs = 0;
 }
@@ -179,27 +179,10 @@ bool isSigned(string left_type, string right_type = "") {
     return true;
 }
 
-/************************ bpatching and some ************************/
+/************************ cast to P ************************/
 Node* castExpToP(Exp *left) {
     Node *temp = new P(left);
     return temp;
-}
-
-void ifBPatch(M *label, Exp *exp) {
-    int loc = emitUnconditional();
-    string end_l = genLabel();
-    bpatch(exp->trueList, label->instruction);
-    bpatch(exp->falseList, end_l);
-    bpatch(makeList(bp_pair(loc, FIRST)), end_l);
-}
-
-void ifElseBPatch(M* m_label, N* n_label, Exp *exp) {
-    int loc2 = emitUnconditional();
-    string end_l = genLabel();
-    bpatch(exp->trueList, m_label->instruction);
-    bpatch(exp->falseList, m_label->instruction);
-    bpatch(makeList(bp_pair(n_label->loc, FIRST)), end_l);
-    bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
 }
 
 /************************ M, N, P ************************/
@@ -358,10 +341,10 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     // RELOP checking if both exp are numbers
     if ((left->type.compare("INT") == 0 || left->type.compare("BYTE") == 0) &&
         (right->type.compare("INT") == 0 || right->type.compare("BYTE") == 0)) {
-        bool isSigned = isSigned(left->type, right->type);
+        bool isInt = isSigned(left->type, right->type);
         if (str.compare("RELOPL") == 0 || str.compare("RELOPN") == 0) {
             this->type = "BOOL";
-            this->reg = llvm.relop(left, right, op->value, isSigned);
+            this->reg = llvm.relop(left, right, op->value, isInt);
             if (!right->instruction.empty()) {
                 end_instr = right->instruction;
             } else {
@@ -373,7 +356,7 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
             if (left->type.compare("BYTE") == 0 && right->type.compare("BYTE")) {
                 this->type = "BYTE"; //
             }
-            this->reg = llvm.binop(left, right, op->value, isSigned);
+            this->reg = llvm.binop(left, right, op->value, isInt);
         }
     } // AND, OR
     else if (left->type.compare("BOOL") == 0 &&
