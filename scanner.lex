@@ -1,6 +1,6 @@
 %{
 #include <stdio.h>
-#include "library.h"
+#include "IRManager.hpp"
 #include "parser.tab.hpp"
 %}
 

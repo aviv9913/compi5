@@ -12,10 +12,11 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <iostream>
 #include "hw3_output.hpp"
 #include "bp.hpp"
 
-#if 1
+#if 0
 #define FUNC_ENTRY()  \
   cerr << __PRETTY_FUNCTION__ << " --> " << endl;
 
@@ -246,6 +247,9 @@ public:
 // CaseDecl
 class CaseDecl : public Node {
 public:
+    string num;
+    vector<pair<int, BranchLabelIndex>> breakList;
+    vector<pair<int, BranchLabelIndex>> continueList;
     // CASE NUM: Statements
     CaseDecl(Node* num, Statements *statements);
 };
@@ -253,13 +257,10 @@ public:
 // CaseList
 class CaseList : public Node {
 public:
-    vector<CaseDecl*> cases;
+    vector<shared_ptr<CaseDecl>> cases;
 
     // CaseDecl CaseList
     CaseList(CaseDecl *caseDecl, CaseList *caseList);
-
-    // CaseDecl
-    CaseList(CaseDecl *caseDecl) {};
 
     // DEFAULT: Statements
     CaseList(Statements *statements);
@@ -295,7 +296,7 @@ public:
 
     // IF (Exp) Statement, IF (Exp) Statement ELSE Statement
     // WHILE (Exp) Statement
-    Statement(string str, Exp *exp, Statement *st);
+    Statement(string str, Exp *exp, Statement *st = nullptr);
 
     // BREAK; CONTINUE;
     Statement(Node *terminal);
@@ -320,5 +321,9 @@ public:
 };
 
 void enterArgsToStackTable(Formals *fm);
+
+void ifBPatch(M *label, Exp *exp);
+void ifElseBPatch(M* m_label, N* n_label, Exp *exp);
+
 
 #endif //COMPI3_LIBRARY_H

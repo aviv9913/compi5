@@ -5,8 +5,7 @@
 #ifndef COMPI5_IRMANAGER_HPP
 #define COMPI5_IRMANAGER_HPP
 
-#include "hw3_output.hpp"
-#include "bp.hpp"
+
 #include "library.h"
 
 using namespace std;
@@ -143,25 +142,9 @@ void emitStore(string dataReg, string ptrReg, string ptrRegType= "i32*", string 
         cerr<<"emitStore: no '*' in ptrReg type";
         exit(1);
     }
-    emit("store " + dataRegType +" %" + dataReg + ", " + ptrRegType +" %" + ptrReg);
+    emit("store " + dataRegType + " " + dataReg + ", " + ptrRegType + " " + ptrReg);
 }
 
-void ifBPatch(M *label, Exp *exp) {
-    int loc = emitUnconditional();
-    string end_l = genLabel();
-    bpatch(exp->trueList, label->instruction);
-    bpatch(exp->falseList, end_l);
-    bpatch(makeList(bp_pair(loc, FIRST)), end_l);
-}
-
-void ifElseBPatch(M* m_label, N* n_label, Exp *exp) {
-    int loc2 = emitUnconditional();
-    string end_l = genLabel();
-    bpatch(exp->trueList, m_label->instruction);
-    bpatch(exp->falseList, m_label->instruction);
-    bpatch(makeList(bp_pair(n_label->loc, FIRST)), end_l);
-    bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
-}
 
 class IRManager {
 private:
@@ -222,6 +205,14 @@ public:
         } else {
             emit(reg + " = add i32 0," + value);
         }
+        return reg;
+    }
+
+    string assignToReg(string value, string type, string reg = "") {
+        if (reg.empty()) {
+            reg = getReg();
+        }
+        emit(reg + " = add " + type +" 0," + value);
         return reg;
     }
 
@@ -321,13 +312,10 @@ public:
         return new_reg;
     }
 
-
-
-
     void emitGetElementPtr(string elementReg, string ptrVar, int size, int index){
         emit(
-            "%" + elementReg + " = getelementptr [" + to_string(size) + " x i32]," +
-            " [" + to_string(size) + " x i32]* %" + ptrVar + "," +
+            elementReg + " = getelementptr [" + to_string(size) + " x i32]," +
+            " [" + to_string(size) + " x i32]* " + ptrVar + "," +
             "i32 0, i32 " + to_string(index)
         );
     }

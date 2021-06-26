@@ -2,7 +2,6 @@
 // Created by Aviv on 17/05/2021.
 //
 
-#include "library.h"
 #include "IRManager.hpp"
 
 extern char *yytext;
@@ -44,7 +43,7 @@ void decCase() {
 void incLoop() {
     loopCount++;
 }
-//TODO: add M, N, P to parser
+//DONE: add M, N, P to parser
 void decLoop(N *first, P *second, Statement *st) {
     loopCount--;
 
@@ -177,6 +176,23 @@ bool isSigned(string left_type, string right_type = "") {
         return false;
     }
     return true;
+}
+
+void ifBPatch(M *label, Exp *exp) {
+    int loc = emitUnconditional();
+    string end_l = genLabel();
+    bpatch(exp->trueList, label->instruction);
+    bpatch(exp->falseList, end_l);
+    bpatch(makeList(bp_pair(loc, FIRST)), end_l);
+}
+
+void ifElseBPatch(M* m_label, N* n_label, Exp *exp) {
+    int loc2 = emitUnconditional();
+    string end_l = genLabel();
+    bpatch(exp->trueList, m_label->instruction);
+    bpatch(exp->falseList, m_label->instruction);
+    bpatch(makeList(bp_pair(n_label->loc, FIRST)), end_l);
+    bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
 }
 
 /************************ cast to P ************************/
@@ -538,7 +554,7 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
     emit("%args = alloca [" + to_string(args->formals.size()) + " x i32]");
     for(int i=0; i<args->formals.size(); ++i){
         string ptrReg = getReg();
-        llvm.emitGetElementPtr(ptrReg, "args", args->formals.size(), currentFuncArgs - i - 1);
+        llvm.emitGetElementPtr(ptrReg, "%args", args->formals.size(), currentFuncArgs - i - 1);
         string dataReg = to_string(i);
         string argType = getLLVMType(args->formals[i]->type);
         if(argType != "i32"){
@@ -603,7 +619,7 @@ Statement::Statement(Type *type, Node *ID) {
     string expType = getLLVMType(type->value);
     this->reg = llvm.assignToReg(0, expType);
     string ptrReg = getReg();
-    llvm.emitGetElementPtr(ptrReg, "stack", 50, offset);
+    llvm.emitGetElementPtr(ptrReg, "%stack", 50, offset);
     string dataReg = reg;
     if(expType != "i32"){
         dataReg = getReg();
@@ -662,13 +678,13 @@ string emitCodeToBuffer(string data, string type, int offset){
         dataReg = getReg();
         dataReg = std::to_string(emitZext(dataReg, data));
     }
-    llvm.assignToReg(0, reg=reg);
+    llvm.assignToReg(0, false, reg=reg);
     string ptrReg = getReg();
     if(offset >= 0){
-        llvm.emitGetElementPtr(ptrReg, "stack", 50, offset);
+        llvm.emitGetElementPtr(ptrReg, "%stack", 50, offset);
 
     } else if(offset < 0 && currentFuncArgs > 0){
-        llvm.emitGetElementPtr(ptrReg, "args", currentFuncArgs, currentFuncArgs+offset);
+        llvm.emitGetElementPtr(ptrReg, "%args", currentFuncArgs, currentFuncArgs+offset);
 
     } else{
         cout<<"Not suppose get here, currentFuncArgs = 0 and offset < 0"<<endl;
@@ -852,6 +868,7 @@ Statement::Statement(Node *terminal) {
 // switch (Exp) {CaseList}
 Statement::Statement(Exp *exp, CaseList *caseList) {
     FUNC_ENTRY()
+
     this->data = "this was switch case";
 }
 
@@ -867,18 +884,23 @@ Statements::Statements(Statements *sts, Statement *st) {
 
 /************************ SWITCH CASE ************************/
 // CaseDecl-> Case NUM: Statements
-CaseDecl::CaseDecl(Node* num, Statements *statements) {
+CaseDecl::CaseDecl(Node* num, Statements *statements ,type) {
     FUNC_ENTRY()
+    this->num = num->value;
+    this->breakList = statements->breakList;
+    this->continueList = statements->continueList;
 }
 
 // CaseList-> CaseDecl, CaseList
 CaseList::CaseList(CaseDecl *caseDecl, CaseList *caseList) {
     FUNC_ENTRY()
+    this->cases.emplace_back(caseDecl);
 }
 
 // CaseList-> Default: Statements
 CaseList::CaseList(Statements *statements) {
     FUNC_ENTRY()
+    this->cases.emplace_back(shared_ptr<CaseDecl>(new CaseDecl(new Node("-1"), statements)));
 }
 
 Funcs::Funcs() {
