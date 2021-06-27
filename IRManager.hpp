@@ -157,12 +157,12 @@ private:
         emitGlobal("@ZeroExcp = constant [22 x i8] c\"Error division by zero\"");
 
         emitGlobal("define void @printi(i32) {");
-        emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4x i8]* @.int_specifier, i32 0, i32 0), i32 %0)");
+        emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0), i32 %0)");
         emitGlobal("ret void");
         emitGlobal("}");
 
         emitGlobal("define void @print(i8*) {");
-        emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4x i8]* @.str_specifier, i32 0, i32 0), i8* %0)");
+        emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0), i8* %0)");
         emitGlobal("ret void");
         emitGlobal("}");
     }
