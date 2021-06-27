@@ -639,7 +639,6 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
         exit(0);
     }
     // checking that types match
-    DEBUG(cout << "type->value:"<< type->value << " exp->type:" << exp->type << endl;)
     if (type->value != exp->type) {
         if(!(type->value == "INT" && exp->type == "BYTE")){
             output::errorMismatch(yylineno);
@@ -663,10 +662,11 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     }
     llvm.assignToReg(0, expType, dataReg);
     string ptrReg = llvm.assignToReg(0, expType, dataReg);
-    dataReg = reg;
+    dataReg = this->reg;
     if(expType != "i32"){
         dataReg = getReg();
-        dataReg = std::to_string(emitZext(dataReg, reg));
+//        dataReg = std::to_string(emitZext(dataReg, reg));
+        emitZext(dataReg, reg);
     }
     emitStore(dataReg, ptrReg);
 }
