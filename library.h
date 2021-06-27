@@ -16,7 +16,7 @@
 #include "hw3_output.hpp"
 #include "bp.hpp"
 
-#if 0
+#if 1
 #define FUNC_ENTRY()  \
   cerr << __PRETTY_FUNCTION__ << " --> " << endl;
 
