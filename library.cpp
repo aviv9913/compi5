@@ -116,8 +116,8 @@ void endProgram() {
         exit(0);
     }
     closeScope();
-    printCodeBuffer();
     printGlobalBuffer();
+    printCodeBuffer();
 }
 
 void endCurrentFunc(RetType *retType) {
