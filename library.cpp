@@ -650,7 +650,7 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     int offset = offsetStack.back()++;
     auto new_entry = shared_ptr<SymbolEntry>(new SymbolEntry(ID->value, type->value, offset));
     tableStack.back()->symbols.emplace_back(new_entry);
-
+    DEBUG(cout << "finished original code " << endl;)
     //Writing LLVM code
     this->reg = getReg();
     string expType = getLLVMType(exp->type);
