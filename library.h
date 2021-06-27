@@ -262,6 +262,8 @@ public:
     // CaseDecl CaseList
     CaseList(CaseDecl *caseDecl, CaseList *caseList);
 
+    CaseList(CaseDecl *caseDecl);
+
     // DEFAULT: Statements
     CaseList(Statements *statements);
 };

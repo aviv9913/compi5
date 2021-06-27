@@ -1,7 +1,7 @@
 %{
 #include <iostream>
 #include <stdlib.h>
-#include "IRManager.hpp"
+#include "library.h"
 using namespace std;
 extern int yylex();
 int yyerror(const char * message);

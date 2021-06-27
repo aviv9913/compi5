@@ -884,7 +884,7 @@ Statements::Statements(Statements *sts, Statement *st) {
 
 /************************ SWITCH CASE ************************/
 // CaseDecl-> Case NUM: Statements
-CaseDecl::CaseDecl(Node* num, Statements *statements ,type) {
+CaseDecl::CaseDecl(Node* num, Statements *statements) {
     FUNC_ENTRY()
     this->num = num->value;
     this->breakList = statements->breakList;
@@ -895,6 +895,10 @@ CaseDecl::CaseDecl(Node* num, Statements *statements ,type) {
 CaseList::CaseList(CaseDecl *caseDecl, CaseList *caseList) {
     FUNC_ENTRY()
     this->cases.emplace_back(caseDecl);
+}
+
+CaseList::CaseList(CaseDecl *caseDecl) {
+    FUNC_ENTRY()
 }
 
 // CaseList-> Default: Statements
