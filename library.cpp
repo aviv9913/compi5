@@ -617,7 +617,7 @@ Statement::Statement(Type *type, Node *ID) {
     //Writing LLVM code
     this->data = "type id";
     string expType = getLLVMType(type->value);
-    this->reg = llvm.assignToReg(0, expType);
+    this->reg = llvm.assignToReg("0", expType);
     string ptrReg = getReg();
     llvm.emitGetElementPtr(ptrReg, "%stack", 50, offset);
     string dataReg = reg;
@@ -655,14 +655,13 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     this->reg = getReg();
     string expType = getLLVMType(exp->type);
     string dataReg = exp->reg;
-    DEBUG(cout << "******** dataReg:" << dataReg << " ************" << endl;)
     if(type->value == "INT" && exp->type == "BYTE"){
         //%reg = zext i8 %reg to i32
         dataReg = getReg();
         emitZext(dataReg, exp->reg);
     }
-    llvm.assignToReg(0, expType, dataReg);
-    string ptrReg = llvm.assignToReg(0, expType, dataReg);
+    llvm.assignToReg("0", expType, dataReg);
+    string ptrReg = llvm.assignToReg("0", expType, dataReg);
     dataReg = this->reg;
     if(expType != "i32"){
         dataReg = getReg();
@@ -680,7 +679,7 @@ string emitCodeToBuffer(string data, string type, int offset){
         dataReg = getReg();
         dataReg = std::to_string(emitZext(dataReg, data));
     }
-    llvm.assignToReg(0, false, reg=reg);
+    llvm.assignToReg("0", false, reg=reg);
     string ptrReg = getReg();
     if(offset >= 0){
         llvm.emitGetElementPtr(ptrReg, "%stack", 50, offset);
