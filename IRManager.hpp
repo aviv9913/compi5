@@ -149,26 +149,32 @@ void emitStore(string dataReg, string ptrReg, string ptrRegType= "i32*", string 
 class IRManager {
 private:
     void addExitAndPrintFunctions() {
-        emit("declare i32 @printf(i8*, ...)");
-        emit("declare void @exit(i32)");
+        emitGlobal("declare i32 @printf(i8*, ...)");
+        emitGlobal("declare void @exit(i32)");
+
         emitGlobal("@.int_specifier = constant [4 x i8] c\"%d\\0A\\00\"");
         emitGlobal("@.str_specifier = constant [4 x i8] c\"%s\\0A\\00\"");
+        emitGlobal("@ZeroExcp = constant [22 x i8] c\"Error division by zero\"");
 
-        emit("define void @printi(i32) {");
-        emit("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4x i8]* @.int_specifier, i32 0, i32 0), i32 %0)");
-        emit("ret void");
-        emit("}");
-        emit("define void @print(i8*) {");
-        emit("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4x i8]* @.str_specifier, i32 0, i32 0), i8* %0)");
-        emit("ret void");
-        emit("}");
+        emitGlobal("define void @printi(i32) {");
+        emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4x i8]* @.int_specifier, i32 0, i32 0), i32 %0)");
+        emitGlobal("ret void");
+        emitGlobal("}");
+
+        emitGlobal("define void @print(i8*) {");
+        emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4x i8]* @.str_specifier, i32 0, i32 0), i8* %0)");
+        emitGlobal("ret void");
+        emitGlobal("}");
     }
 
     void handleZeroDivision(string reg) {
         emitCondition(reg, "=", "0");
         int b_first = emitConditionFromResult(reg);
         string l_first = genLabel();
-        string zero_reg = addGlobalString("Error division by zero");
+        string zero_reg = getReg();
+        string error_msg = "Error di"
+//        string zero_reg = addGlobalString("Error division by zero");
+        emit(zero_reg + " = getelementptr [22 x i8], [22 x i8]* @ZeroExcp, i32 0, i32 0");
         emit("call void @print(i8* " + zero_reg + ")");
         exitProgram();
         int b_second = emitUnconditional();
@@ -190,7 +196,7 @@ public:
         string string_size= to_string(s.length() + 1);
         string reg = getReg();
         string global_reg = getGlobalReg(reg);
-        emitGlobal(global_reg + " = constant [" + string_size + "x i8] c\"" + s + "\\00\"");
+        emitGlobal(reg + " = constant [" + string_size + "x i8] c\"" + s + "\\00\"");
         emit(reg + " = getelementptr [" + string_size + "x i8] , ["+ string_size + "x i8]* " +
                 reg + ", i32 0, i32 0");
         return reg;
