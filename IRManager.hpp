@@ -319,9 +319,8 @@ public:
 
     void emitGetElementPtr(string elementReg, string ptrVar, int size, int index){
         emit(
-            elementReg + " = getelementptr [" + to_string(size) + " x i32]," +
-            " [" + to_string(size) + " x i32]* " + ptrVar + "," +
-            "i32 0, i32 " + to_string(index)
+            elementReg + " = getelementptr [" + to_string(size) + " x i32], [" + to_string(size) + " x i32]* " +
+            ptrVar + ", i32 0, i32 " + to_string(index)
         );
     }
 };

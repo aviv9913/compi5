@@ -652,7 +652,7 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     tableStack.back()->symbols.emplace_back(new_entry);
 
     //Writing LLVM code
-    this->reg = getReg();
+//    this->reg = getReg();
     string expType = getLLVMType(exp->type);
     string dataReg = exp->reg;
     if(type->value == "INT" && exp->type == "BYTE"){
@@ -660,8 +660,10 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
         dataReg = getReg();
         emitZext(dataReg, exp->reg);
     }
-    llvm.assignToReg("0", expType, dataReg);
-    string ptrReg = llvm.assignToReg("0", expType, dataReg);
+    this->reg = llvm.assignToReg(dataReg, expType);
+    string ptrReg = getReg();
+    llvm.emitGetElementPtr(ptrReg, "%stack", 50, offset);
+//    string ptrReg = llvm.assignToReg("0", expType, dataReg);
     dataReg = this->reg;
     if(expType != "i32"){
         dataReg = getReg();
