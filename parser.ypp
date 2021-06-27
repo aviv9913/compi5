@@ -86,7 +86,7 @@ Statement:
     | Call SC {$$= new Statement(dynamic_cast<Call*>($1));}
     | RETURN SC {$$= new Statement(dynamic_cast<RetType*>($1));}
     | RETURN Exp SC {$$= new Statement(dynamic_cast<Exp*>($2));}
-    | IF LPAREN BoolCheck RPAREN OSM M Statement{
+    | IF LPAREN BoolCheck RPAREN OSM M Statement {
         $$= new Statement("if", dynamic_cast<Exp*>($3), dynamic_cast<Statement*> ($7));
         closeScope();
         ifBPatch(dynamic_cast<M*> ($6), dynamic_cast<Exp*> ($3));
@@ -100,12 +100,13 @@ Statement:
           $$ = addElseStatement(dynamic_cast<Statement*>($9), dynamic_cast<Statement*>($12));
       }
     | WHILE LPAREN N Exp RPAREN {$$= castExpToP(dynamic_cast<Exp*> ($4));}
-     {$$= new Statement("while", dynamic_cast<Exp*>($3)); incLoop();} OSM Statement CSM
-    {decLoop(dynamic_cast<N*> ($3),dynamic_cast<P*> ($6),dynamic_cast<Statement*> ($9)); $$ = $7;} //Original "<Statement*> ($9)), $$ = $7;"
+       {$$= new Statement("while", dynamic_cast<Exp*>($3)); incLoop();} OSM Statement CSM
+       {decLoop(dynamic_cast<N*> ($3),dynamic_cast<P*> ($6),dynamic_cast<Statement*> ($9)); $$ = $7;} //Original "<Statement*> ($9)), $$ = $7;"
     | BREAK SC{$$= new Statement($1);}
     | CONTINUE SC{$$= new Statement($1);}
-    | SWITCH LPAREN IntCheck RPAREN LBRACE OSM CaseList CSM RBRACE{$$= new Statement(dynamic_cast<Exp*>($3),
-    dynamic_cast<CaseList*>($7));};
+    | SWITCH {incCase();} LPAREN Exp {new Exp(dynamic_cast<Exp*>($4), nullptr);} RPAREN LBRACE OSM
+       CaseList {$$ = new Statement(dynamic_cast<Exp*>($4), dynamic_cast<CaseList*>($9));}
+       CSM {decCase();} RBRACE {$$ = $10;};
 
 Call:
     ID LPAREN ExpList RPAREN{$$= new Call($1, dynamic_cast<ExpList*>($3));}
@@ -140,14 +141,13 @@ Exp:
 CaseList:
     CaseDecl CaseList{$$= new CaseList(dynamic_cast<CaseDecl*>($1), dynamic_cast<CaseList*>($2));}
     | CaseDecl{$$= new CaseList(dynamic_cast<CaseDecl*>($1));}
-    | DEFAULT COLON Statements{$$= new CaseList(dynamic_cast<Statements*>($3));};
+    | DEFAULT COLON N Statements{$$= new CaseList(dynamic_cast<Statements*>($4), dynamic_cast<N*>($3));};
 
 CaseDecl:
-    CASE NUM COLON Statements{$$= new CaseDecl($2, dynamic_cast<Statements*>($4));};
+    CASE NUM COLON Statements{$$= new CaseDecl(new Exp($2, "SWITCH"), dynamic_cast<Statements*>($4));};
 
 
 BoolCheck:  Exp{$$= new Exp(dynamic_cast<Exp*>($1), "STRING");};
-IntCheck:   Exp{$$= new Exp(dynamic_cast<Exp*>($1), 0);};
 OSM:						 		{openScope();};
 CSM:								{closeScope();};
 M:                              {$$ = new M();};

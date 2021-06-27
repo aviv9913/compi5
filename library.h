@@ -74,6 +74,7 @@ void decCase();
 
 string getLLVMType(string type);
 Node* castExpToP(Exp *left);
+string DeclareCaseLabel();
 
 class Node {
 public:
@@ -172,8 +173,8 @@ public:
     // Bool check
     Exp(Exp* exp, string str);
 
-    // int check
-    Exp(Exp* exp, int num);
+    //switch exp
+    Exp(Exp *exp, N *label);
 };
 
 // ExpList
@@ -247,17 +248,20 @@ public:
 // CaseDecl
 class CaseDecl : public Node {
 public:
-    string num;
+    int num;
     vector<pair<int, BranchLabelIndex>> breakList;
     vector<pair<int, BranchLabelIndex>> continueList;
     // CASE NUM: Statements
-    CaseDecl(Node* num, Statements *statements);
+    CaseDecl(Exp* num, Statements *statements);
+    CaseDecl(){};
 };
 
 // CaseList
 class CaseList : public Node {
 public:
     vector<shared_ptr<CaseDecl>> cases;
+    vector<pair<int, BranchLabelIndex>> breakList;
+    vector<pair<int, BranchLabelIndex>> continueList;
 
     // CaseDecl CaseList
     CaseList(CaseDecl *caseDecl, CaseList *caseList);
@@ -265,7 +269,7 @@ public:
     CaseList(CaseDecl *caseDecl);
 
     // DEFAULT: Statements
-    CaseList(Statements *statements);
+    CaseList(Statements *statements, N *label);
 };
 
 // Statement

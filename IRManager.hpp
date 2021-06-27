@@ -104,6 +104,10 @@ int emitCondition(string reg1, string relop, string reg2) {
     return emitConditionFromResult(res_reg);
 }
 
+int emitBranchLabel(string label){
+    return emit("br label %" + label);
+}
+
 int emitZext(string reg1, string reg2) {
     return emit(reg1 + " = zext i8 " + reg2 + " to i32");
 }
@@ -243,6 +247,13 @@ public:
             checkTypeAndEmit(left, right);
         }
         emit(new_reg + " " + op + " " + reg_l + ", " + reg_r);
+        return new_reg;
+    }
+
+    string relop(string leftReg, string rightReg, string op_type, bool isSigned = false) {
+        string op = getRELOPType(op_type, isSigned);
+        string new_reg = getReg();
+        emit(new_reg + " " + op + " " + leftReg + ", " + rightReg);
         return new_reg;
     }
 

@@ -11,6 +11,8 @@ string currentFunc;
 int currentFuncArgs;
 int loopCount = 0;
 int insideCase = 0;
+int caseNum = 0;
+int maxCase = 0;
 
 /// Table Stack
 vector<shared_ptr<SymbolTable>> tableStack;
@@ -31,13 +33,16 @@ void printTableStack(){
 }
 
 void incCase() {
-    FUNC_ENTRY()
     insideCase++;
+    maxCase++;
+    caseNum = maxCase;
 }
 
 void decCase() {
-    FUNC_ENTRY()
     insideCase--;
+    if(insideCase > 0){
+        caseNum--;
+    }
 }
 
 void incLoop() {
@@ -63,16 +68,18 @@ void decLoop(N *first, P *second, Statement *st) {
 }
 
 void openScope(){
-    DEBUG(cout<<"openScope"<<endl;)
+    FUNC_ENTRY()
     auto newScope = shared_ptr<SymbolTable>(new SymbolTable);
     tableStack.emplace_back(newScope);
     offsetStack.push_back(offsetStack.back());
 }
 
 void closeScope(){
-    output::endScope();
+    FUNC_ENTRY()
+    //output::endScope();
+    //DEBUG(printTableStack();)
     auto scope_table = tableStack.back();
-    for (auto i:scope_table->symbols) {//printing all the variables and functions
+    for (auto i : scope_table->symbols) {//printing all the variables and functions
         if (i->type.size() == 1) { //variable
 //            output::printID(i->name, i->offset, i->type[0]);
         } else {
@@ -85,15 +92,12 @@ void closeScope(){
 //            output::printID(i->name, i->offset, output::makeFunctionType(retVal, i->type));
         }
     }
-
     //clear symbol table
     while (scope_table->symbols.size() != 0) {
         scope_table->symbols.pop_back();
     }
     tableStack.pop_back();
     offsetStack.pop_back();
-    DEBUG(printTableStack();)
-    FUNC_EXIT()
 }
 
 void endProgram() {
@@ -121,6 +125,7 @@ void endProgram() {
 }
 
 void endCurrentFunc(RetType *retType) {
+    FUNC_ENTRY()
     if (retType->value == "VOID") {
         emit("ret void");
     } else {
@@ -133,6 +138,7 @@ void endCurrentFunc(RetType *retType) {
 }
 
 void enterArgsToStackTable(Formals *fm) {
+    FUNC_ENTRY()
     DEBUG(cout<<"enterArgsToStackTable:"<<endl;)
     for (int i = 0; i < fm->formals.size(); ++i) {
         auto temp = shared_ptr<SymbolEntry>(new SymbolEntry(fm->formals[i]->value, fm->formals[i]->type,-i-1));
@@ -142,7 +148,6 @@ void enterArgsToStackTable(Formals *fm) {
 }
 
 bool IDExists(string id) {
-    DEBUG(printTableStack();)
     DEBUG(cout<<"IDExists: checking-"<<id<<endl;)
     for (int i = tableStack.size()-1 ; i>=0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
@@ -190,7 +195,7 @@ void ifElseBPatch(M* m_label, N* n_label, Exp *exp) {
     int loc2 = emitUnconditional();
     string end_l = genLabel();
     bpatch(exp->trueList, m_label->instruction);
-    bpatch(exp->falseList, m_label->instruction);
+    bpatch(exp->falseList, n_label->instruction);
     bpatch(makeList(bp_pair(n_label->loc, FIRST)), end_l);
     bpatch(makeList(bp_pair(loc2, FIRST)), end_l);
 }
@@ -203,15 +208,18 @@ Node* castExpToP(Exp *left) {
 
 /************************ M, N, P ************************/
 M::M() {
+    FUNC_ENTRY()
     this->instruction = genLabel();
 }
 
 N::N() {
+    FUNC_ENTRY()
     this->loc = emitUnconditional();
     this->instruction = genLabel();
 }
 
 P::P(Exp *left) {
+    FUNC_ENTRY()
     this->loc = emitConditionFromResult(left->reg);
     this->instruction = genLabel();
 }
@@ -319,12 +327,15 @@ Exp::Exp(Node *terminal, string str) : Node(terminal->value) {
         this->boolValue = true;
         this->type = "BOOL";
         this->reg = llvm.assignBoolToReg("1");
+    }
+    else if(str == "SWITCH"){
+            this->type = "INT";
+            this->reg = llvm.assignToReg(terminal->value, false);
     } else {
         this->boolValue = false;
         this->type = "BOOL";
         this->reg = llvm.assignBoolToReg("0");
     }
-
 }
 
 // !Exp
@@ -341,7 +352,7 @@ Exp::Exp(Node *Not, Exp *exp) {
     this->trueList = exp->falseList;
     this->reg = llvm.assignBoolToReg(exp->reg);
 }
-//TODO: update parser
+//DONE: update parser
 // Exp op Exp
 Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     FUNC_ENTRY()
@@ -457,6 +468,7 @@ Exp::Exp(Call *call) {
 
 // bool check
 Exp::Exp(Exp *exp, string str) {
+    FUNC_ENTRY()
     DEBUG(cout<<"bool check"<<endl;)
     if (exp->type != "BOOL") {
         output::errorMismatch(yylineno);
@@ -472,18 +484,24 @@ Exp::Exp(Exp *exp, string str) {
     this->falseList = makeList(bp_pair(loc, SECOND));
 }
 
-
-// int check
-Exp::Exp(Exp *exp, int num) {
+//switch exp
+Exp::Exp(Exp *exp, N *label) {
     FUNC_ENTRY()
-    DEBUG(cout<<"type:"<<exp->type<<endl;)
-    if (exp->type.compare("INT") !=0 && exp->type.compare("BYTE") !=0) {
+    if (exp->type != "INT"  && exp->type !="BYTE") {
         output::errorMismatch(yylineno);
         exit(0);
+    }
+    if(label){
+        bpatch(makeList(bp_pair(label->loc, FIRST)),label->instruction);
     }
     this->value = exp->value;
     this->type = exp->type;
     this->boolValue = exp->boolValue;
+    this->reg = exp->reg;
+    this->instruction = exp->instruction;
+    this->trueList = vector<bp_pair>();
+    this->falseList = vector<bp_pair>();
+    emitBranchLabel("switch_label_" + to_string(caseNum));
 }
 
 // Exp
@@ -843,53 +861,130 @@ Statement::Statement(Node *terminal) {
     this->breakList = tmpList1;
     this->continueList = tmpList2;
 
-    if (terminalValue == "break") {
-        if(loopCount <= 0 && insideCase<=0){
+    if(loopCount <= 0 && insideCase<=0){
+        if(terminal->value == "break"){
             output::errorUnexpectedBreak(yylineno);
-            DEBUG(cout<<"value:"<<terminalValue<<" ,loopCount:"<<loopCount<<" insideCase:"<<insideCase<<endl;)
+            exit(1);
+        }
+        else if(terminal->value == "continue"){
+            output::errorUnexpectedContinue(yylineno);
             exit(1);
         }
     }
-    else if(loopCount <= 0){
-        output::errorUnexpectedContinue(yylineno);
-        DEBUG(cout<<"value:"<<terminalValue<<" ,loopCount:"<<loopCount<<" insideCase:"<<insideCase<<endl;)
-        exit(1);
-    }
-
-    int location = emit("br label @");
-    if(insideCase <=0){
-        if(terminalValue == "break"){
-            this->breakList = makeList({location, FIRST});
-        } else {
-            this->continueList = makeList({location, FIRST});
+    else if(loopCount > 0){
+        int location = emitUnconditional();
+        if(terminal->value == "break"){
+            breakList = makeList(bp_pair(location, FIRST));
+        }
+        else {
+            continueList = makeList(bp_pair(location, FIRST));
         }
     }
-    //TODO: implement break inside case scenario
-    this->data = "this was a break/ continue";
+    else if(insideCase > 0){
+        int location = emitUnconditional();
+        if(terminal->value == "break"){
+            breakList = makeList(bp_pair(location, FIRST));
+        }
+        else {
+            output::errorUnexpectedContinue(yylineno);
+            exit(1);
+        }
+    }
+    else if (terminal->value == "continue" && insideCase > 0){
+        output::errorUnexpectedContinue(yylineno);
+        exit(1);
+    }
+    //DONE: implement break inside case scenario
+    this->data = "this was a break/continue";
 }
 
 // switch (Exp) {CaseList}
 Statement::Statement(Exp *exp, CaseList *caseList) {
     FUNC_ENTRY()
+    if(exp->type != "INT" && exp->type != "BYTE"){
+        output::errorMismatch(yylineno);
+        exit(1);
+    }
+    for(auto &c : caseList->cases){
+        if(c->value != "INT" && c->value != "BYTE"){
+            output::errorMismatch(yylineno);
+            DEBUG(cout<<"case number has wrong type, type ="<<c->value<<endl;)
+            exit(1);
+        }
+    }
 
     this->data = "this was switch case";
+
+    emit("label_switch_" + to_string(caseNum) + ":");
+    int defaultCaseIndex = 0;
+    string finalLabel = "label_switch_" + to_string(caseNum) + "_final";
+    for (int i = caseList->cases.size()-1; i>=0 ; --i){
+        shared_ptr<CaseDecl> currCase = caseList->cases[i];
+        if(currCase->reg == "default"){
+            defaultCaseIndex = i;
+            continue;
+        }
+        string tempReg = llvm.assignToReg(to_string(currCase->num), false);
+        string compareReg = llvm.relop(exp->reg, tempReg, "==");
+        string falseCaseLabel = "label_switch_" + to_string(caseNum) + "_case_" + to_string(i);
+        emit("br i1 " + compareReg + ", label "+ currCase->instruction + ", label %" + falseCaseLabel);
+        emit(falseCaseLabel + ":");
+        if(!currCase->breakList.empty()){
+            bpatch(currCase->breakList, finalLabel);
+        }
+        if(caseList->cases.size() == 1){
+            emitBranchLabel(finalLabel);
+        }
+    }
+
+    emitBranchLabel(caseList->cases[defaultCaseIndex]->instruction);
+    bpatch(caseList->breakList, finalLabel);
+    emit(finalLabel + ":");
+    this->breakList = vector<bp_pair>();
+    this->continueList = merge(vector<bp_pair>(), caseList->continueList);
+    for (auto &c : caseList->cases){
+        this->continueList = merge(this->continueList, c->continueList);
+    }
 }
 
 Statements::Statements(Statement *st) {
-    this->breakList = st->breakList;
-    this->continueList = st->continueList;
+    FUNC_ENTRY()
+    if(st != nullptr){
+        this->breakList = st->breakList;
+        this->continueList = st->continueList;
+    }
+    FUNC_EXIT()
 }
 
 Statements::Statements(Statements *sts, Statement *st) {
+    FUNC_ENTRY()
     this->breakList = merge(sts->breakList, st->breakList);
     this->continueList = merge(sts->continueList, st->continueList);
 }
 
 /************************ SWITCH CASE ************************/
-// CaseDecl-> Case NUM: Statements
-CaseDecl::CaseDecl(Node* num, Statements *statements) {
+string DeclareCaseLabel(){
     FUNC_ENTRY()
-    this->num = num->value;
+    int location = emitUnconditional();
+    string label = genLabel();
+    bpatch(makeList(bp_pair(location, FIRST)), label);
+    return label;
+}
+
+
+
+// CaseDecl-> Case NUM: Statements
+CaseDecl::CaseDecl(Exp* num, Statements *statements) {
+    FUNC_ENTRY()
+    this->instruction = DeclareCaseLabel();
+    if(num->type != "INT" && num->type != "BYTE"){
+        output::errorMismatch(yylineno);
+        DEBUG(cout<<"case number is not int or byte, num->type="<<num->type<<endl;)
+        exit(1);
+    }
+    this->reg = num->reg;
+    this->value = num->type;
+    this->num = stoi(num->value);
     this->breakList = statements->breakList;
     this->continueList = statements->continueList;
 }
@@ -897,17 +992,34 @@ CaseDecl::CaseDecl(Node* num, Statements *statements) {
 // CaseList-> CaseDecl, CaseList
 CaseList::CaseList(CaseDecl *caseDecl, CaseList *caseList) {
     FUNC_ENTRY()
+    this->cases = vector<shared_ptr<CaseDecl>>(caseList->cases);
     this->cases.emplace_back(caseDecl);
+    this->breakList = merge(caseList->breakList, caseDecl->breakList);
+    this->continueList = merge(caseList->continueList, caseDecl->breakList);
+    this->value = "this was a case list";
 }
 
 CaseList::CaseList(CaseDecl *caseDecl) {
     FUNC_ENTRY()
+    this->cases.emplace_back(caseDecl);
+    this->breakList = caseDecl->breakList;
+    this->continueList = caseDecl->breakList;
+    this->value = "this was a case list";
 }
 
 // CaseList-> Default: Statements
-CaseList::CaseList(Statements *statements) {
+CaseList::CaseList(Statements *statements, N *label) {
     FUNC_ENTRY()
-    this->cases.emplace_back(shared_ptr<CaseDecl>(new CaseDecl(new Node("-1"), statements)));
+    CaseDecl *tempCase = new CaseDecl();
+    tempCase->value = "INT";
+    tempCase->reg = "default";
+    tempCase->instruction = label->instruction;
+
+    bpatch(makeList(bp_pair(label->loc, FIRST)), label->instruction);
+    this->cases.emplace_back(tempCase);
+    int new_location = emitUnconditional();
+    this->breakList = merge(statements->breakList, makeList(bp_pair(new_location, FIRST)));
+    this->continueList = statements->continueList;
 }
 
 Funcs::Funcs() {
@@ -929,5 +1041,5 @@ Program::Program() {
     global->symbols.emplace_back(printi);
     tableStack.emplace_back(global);
     offsetStack.emplace_back(0);
-    //TODO: make sure all the default stuff get printed from addExitAndPrintFunctions();
+    //DONE: make sure all the default stuff get printed from addExitAndPrintFunctions();
 }
