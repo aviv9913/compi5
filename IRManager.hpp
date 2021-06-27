@@ -172,7 +172,6 @@ private:
         int b_first = emitConditionFromResult(reg);
         string l_first = genLabel();
         string zero_reg = getReg();
-        string error_msg = "Error di"
 //        string zero_reg = addGlobalString("Error division by zero");
         emit(zero_reg + " = getelementptr [22 x i8], [22 x i8]* @ZeroExcp, i32 0, i32 0");
         emit("call void @print(i8* " + zero_reg + ")");
