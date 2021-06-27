@@ -632,13 +632,14 @@ Statement::Statement(Type *type, Node *ID) {
 // Statement-> Type ID = Exp;
 Statement::Statement(Type *type, Node *ID, Exp *exp) {
     FUNC_ENTRY()
-    DEBUG(cout<<"left_type:"<<type->value<<" right_type"<<exp->type<<endl;)
+    DEBUG(cout<<"left_type:"<<type->value<<" right_type:"<<exp->type<<endl;)
     // checking if the variable name already exists in the scope
     if (IDExists(ID->value)) {
         output::errorDef(yylineno, ID->value);
         exit(0);
     }
     // checking that types match
+    DEBUG(cout << "type->value:"<< type->value << " exp->type:" << exp->type << endl;)
     if (type->value != exp->type) {
         if(!(type->value == "INT" && exp->type == "BYTE")){
             output::errorMismatch(yylineno);
