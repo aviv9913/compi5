@@ -654,8 +654,8 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     //Writing LLVM code
     this->reg = getReg();
     string expType = getLLVMType(exp->type);
-    DEBUG(cout << "******** expType:" << expType << " ************" << endl;)
     string dataReg = exp->reg;
+    DEBUG(cout << "******** dataReg:" << dataReg << " ************" << endl;)
     if(type->value == "INT" && exp->type == "BYTE"){
         //%reg = zext i8 %reg to i32
         dataReg = getReg();
