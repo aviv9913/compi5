@@ -125,8 +125,8 @@ int checkTypeAndEmit(Exp *left, Exp *right) {
     return -1; // shouldn't get here
 }
 
-int emitPhi(string reg1, string reg2, string value, string label) {
-    return emit(reg1 + " = phi i1 [" + reg2 + ", " + value + "],[0, " + label + "]");
+int emitPhi(string reg1, string reg2, string value, string label, string boolVal) {
+    return emit(reg1 + " = phi i1 [" + reg2 + ", %" + value + "],[" + boolVal +", %" + label + "]");
 }
 
 int emitTrunc(string reg1, string reg2, string type) {
@@ -297,14 +297,14 @@ public:
             second_l = genLabel(); // left false
             loc3 = emitUnconditional();
             end_l = genLabel();
-            emitPhi(new_reg, right_reg, instr, second_l);
+            emitPhi(new_reg, right_reg, instr, second_l, "0");
             first_l = short_circuit->instruction;
         } else if (op_type == "or") {
             loc2 = emitUnconditional();
             first_l = genLabel(); // left true
             loc3 = emitUnconditional();
             end_l = genLabel();
-            emitPhi(new_reg, right_reg, instr, first_l);
+            emitPhi(new_reg, right_reg, instr, first_l, "1");
             second_l = short_circuit->instruction;
         }
         bpatch(makeList(bp_pair(short_circuit->loc, FIRST)), first_l);
