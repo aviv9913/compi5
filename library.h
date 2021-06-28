@@ -16,7 +16,7 @@
 #include "hw3_output.hpp"
 #include "bp.hpp"
 
-#if 0
+#if 1
 #define FUNC_ENTRY()  \
   cerr << __PRETTY_FUNCTION__ << " --> " << endl;
 
@@ -82,7 +82,7 @@ public:
     string reg;
     string instruction;
     Node(string str) {
-        DEBUG(cout<<str<<"|"<<endl;)
+        DEBUG(cerr<<str<<"|"<<endl;)
         if (str == "void") {
             value = "VOID";
         } else if (str == "bool") {
@@ -159,7 +159,7 @@ public:
     Exp(Node *Not, Exp *exp);
 
     // BINOP, AND, OR, RELOP
-    Exp(Exp *left, Node *op, Exp *right, string str, P *shortC);
+    Exp(Exp *left, Node *op, Exp *right, string str, P *shortC = nullptr);
 
     // (Exp) also check missing string
     Exp(Exp *exp);

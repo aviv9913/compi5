@@ -100,7 +100,7 @@ Statement:
           $$ = addElseStatement(dynamic_cast<Statement*>($9), dynamic_cast<Statement*>($12));
       }
     | WHILE LPAREN N Exp RPAREN {$$= castExpToP(dynamic_cast<Exp*> ($4));}
-       {$$= new Statement("while", dynamic_cast<Exp*>($3)); incLoop();} OSM Statement CSM
+       {$$= new Statement("while", dynamic_cast<Exp*>($4)); incLoop();} OSM Statement CSM
        {decLoop(dynamic_cast<N*> ($3),dynamic_cast<P*> ($6),dynamic_cast<Statement*> ($9)); $$ = $7;} //Original "<Statement*> ($9)), $$ = $7;"
     | BREAK SC{$$= new Statement($1);}
     | CONTINUE SC{$$= new Statement($1);}
@@ -123,8 +123,8 @@ Type:
 
 Exp:
     LPAREN Exp RPAREN{$$= new Exp(dynamic_cast<Exp*> ($2));}
-    | Exp ADD {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "ADD", dynamic_cast<P*> ($3));}
-    | Exp MUL {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "MUL", dynamic_cast<P*> ($3));}
+    | Exp ADD Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "ADD");}
+    | Exp MUL Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "MUL");}
     | ID{$$= new Exp($1);}
     | Call{$$= new Exp(dynamic_cast<Call*>($1));}
     | NUM{$$= new Exp($1, "NUM");}
@@ -135,8 +135,8 @@ Exp:
     | NOT Exp{$$= new Exp($1, dynamic_cast<Exp*>($2));}
     | Exp AND {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "AND", dynamic_cast<P*> ($3));}
     | Exp OR {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "OR", dynamic_cast<P*> ($3));}
-    | Exp RELOPN {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "RELOPN", dynamic_cast<P*> ($3));}
-    | Exp RELOPL {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "RELOPL", dynamic_cast<P*> ($3));};
+    | Exp RELOPN Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPN");}
+    | Exp RELOPL Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPL");};
 
 CaseList:
     CaseDecl CaseList{$$= new CaseList(dynamic_cast<CaseDecl*>($1), dynamic_cast<CaseList*>($2));}

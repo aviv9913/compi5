@@ -22,6 +22,10 @@ vector<int> offsetStack;
 //CodeBuffer &buffer = CodeBuffer::instance();
 IRManager &llvm = IRManager::instance();
 
+void printMsgToErr(string s){
+    cerr<<s<<endl;
+}
+
 void printTableStack(){
     for(int i=0; i<tableStack.size(); i++){
         auto table = tableStack[i];
@@ -77,7 +81,6 @@ void openScope(){
 void closeScope(){
     FUNC_ENTRY()
     //output::endScope();
-    //DEBUG(printTableStack();)
     auto scope_table = tableStack.back();
     for (auto i : scope_table->symbols) {//printing all the variables and functions
         if (i->type.size() == 1) { //variable
@@ -105,7 +108,6 @@ void endProgram() {
     auto global = tableStack.front()->symbols;
     bool mainFound = false;
     for (int i = 0; i < global.size(); ++i) {
-        DEBUG(cout<<global[i]->name<<", "<<global[i]->type.size()<<" ,"<< global[i]->type[0]<<endl;)
         if (global[i]->name == "main") {
             if (global[i]->type.size() == 2) {
                 if (global[i]->type[0] == "VOID" && global[i]->type[1] == "VOID") {
@@ -139,16 +141,13 @@ void endCurrentFunc(RetType *retType) {
 
 void enterArgsToStackTable(Formals *fm) {
     FUNC_ENTRY()
-    DEBUG(cout<<"enterArgsToStackTable:"<<endl;)
     for (int i = 0; i < fm->formals.size(); ++i) {
         auto temp = shared_ptr<SymbolEntry>(new SymbolEntry(fm->formals[i]->value, fm->formals[i]->type,-i-1));
         tableStack.back()->symbols.push_back(temp);
     }
-    DEBUG(printTableStack();)
 }
 
 bool IDExists(string id) {
-    DEBUG(cout<<"IDExists: checking-"<<id<<endl;)
     for (int i = tableStack.size()-1 ; i>=0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
             if (tableStack[i]->symbols[j]->name.compare(id) == 0) {
@@ -156,7 +155,6 @@ bool IDExists(string id) {
             }
         }
     }
-    DEBUG(cout<<"IDExists:"<<id<<" Not found"<<endl;)
     return false;
 }
 
@@ -254,7 +252,7 @@ Call::Call(Node *ID) {
 Call::Call(Node *ID, ExpList *paramList) {
     FUNC_ENTRY()
     DEBUG(for(auto exp:paramList->expList){
-        cout<<exp.value<<","<<exp.type<<endl;
+        cerr<<exp.value<<","<<exp.type<<endl;
         }
     )
     auto global_scope = tableStack.front()->symbols;
@@ -269,7 +267,7 @@ Call::Call(Node *ID, ExpList *paramList) {
                 for (int j = 0; j < paramList->expList.size(); ++j) {
                     if (paramList->expList[j].type == "BYTE" && i->type[j] == "INT") {
                         string reg = getReg();
-                        emitZext(reg, paramList->expList[j].reg);
+                        emitZext(reg, paramList->expList[j].reg, getLLVMType(paramList->expList[j].type));
                         args += getLLVMType("INT") + " " + reg + ",";
                         continue;
                     }
@@ -302,7 +300,7 @@ Call::Call(Node *ID, ExpList *paramList) {
 // NUM, NUM B, STRING, TRUE, FALSE
 Exp::Exp(Node *terminal, string str) : Node(terminal->value) {
     FUNC_ENTRY()
-    DEBUG(cout<<str<<endl;)
+    DEBUG(printMsgToErr(str);)
     this->type = "";
     this->boolValue = false;
     vector<bp_pair> false_list;
@@ -367,7 +365,7 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     this->trueList = true_list;
     string end_instr;
 
-    DEBUG(cout<<"left:"<<left->type<<", op:"<<op->value<<", right:"<<right->type<<", srting:"<<str<<endl;)
+    DEBUG(printMsgToErr("left:"+left->type+", op:"+op->value+", right:"+right->type+", srting:"+str);)
     // RELOP checking if both exp are numbers
     if ((left->type.compare("INT") == 0 || left->type.compare("BYTE") == 0) &&
         (right->type.compare("INT") == 0 || right->type.compare("BYTE") == 0)) {
@@ -419,7 +417,7 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     if (!end_instr.empty()) {
         this->instruction = end_instr;
     }
-    DEBUG(cout<<"type after calc:"<<this->type<<endl;)
+    DEBUG(cerr<<"type after calc:"<<this->type<<endl;)
 }
 
 // (Exp)
@@ -444,10 +442,12 @@ Exp::Exp(Node *ID) {
     for (int i = tableStack.size()-1; i > 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
             if (tableStack[i]->symbols[j]->name == ID->value) {
+
                 this->value = ID->value;
                 this->type = tableStack[i]->symbols[j]->type.back();
                 this->boolValue = false;
                 this->reg = llvm.loadVar(tableStack[i]->symbols[j]->offset, currentFuncArgs, this->type);
+                DEBUG(printMsgToErr("type = " + tableStack[i]->symbols[j]->type.back() + " for id:"+ID->value + " reg:"+this->reg));
                 return;
             }
         }
@@ -472,7 +472,7 @@ Exp::Exp(Call *call) {
 // bool check
 Exp::Exp(Exp *exp, string str) {
     FUNC_ENTRY()
-    DEBUG(cout<<"bool check"<<endl;)
+    DEBUG(cerr<<"bool check"<<endl;)
     if (exp->type != "BOOL") {
         output::errorMismatch(yylineno);
         exit(0);
@@ -559,7 +559,7 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
         this->types.emplace_back("VOID");
         argString += ")";
     }
-    DEBUG(cout<<"Arguments string: "<<argString<<endl;)
+    DEBUG(cerr<<"Arguments string: "<<argString<<endl;)
     this->types.emplace_back(retType->value);
     // open new scope for func
 
@@ -646,7 +646,7 @@ Statement::Statement(Type *type, Node *ID) {
     string dataReg = reg;
     if(expType != "i32"){
         dataReg = getReg();
-        dataReg = emitZext(dataReg, reg);
+        dataReg = emitZext(dataReg, reg, expType);
     }
     emitStore(dataReg, ptrReg);
 }
@@ -655,7 +655,7 @@ Statement::Statement(Type *type, Node *ID) {
 // Statement-> Type ID = Exp;
 Statement::Statement(Type *type, Node *ID, Exp *exp) {
     FUNC_ENTRY()
-    DEBUG(cout<<"left_type:"<<type->value<<" right_type:"<<exp->type<<endl;)
+    DEBUG(cerr<<"left_type:"<<type->value<<" right_type:"<<exp->type<<endl;)
     // checking if the variable name already exists in the scope
     if (IDExists(ID->value)) {
         output::errorDef(yylineno, ID->value);
@@ -681,17 +681,15 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
     if(type->value == "INT" && exp->type == "BYTE"){
         //%reg = zext i8 %reg to i32
         dataReg = getReg();
-        emitZext(dataReg, exp->reg);
+        emitZext(dataReg, exp->reg, expType);
     }
     this->reg = llvm.assignToReg(dataReg, expType);
     string ptrReg = getReg();
     llvm.emitGetElementPtr(ptrReg, "%stack", 50, offset);
-//    string ptrReg = llvm.assignToReg("0", expType, dataReg);
     dataReg = this->reg;
     if(expType != "i32"){
         dataReg = getReg();
-//        dataReg = std::to_string(emitZext(dataReg, reg));
-        emitZext(dataReg, reg);
+        emitZext(dataReg, reg, expType);
     }
     emitStore(dataReg, ptrReg);
 }
@@ -702,7 +700,7 @@ string emitCodeToBuffer(string data, string type, int offset){
     string argType = getLLVMType(type);
     if(argType != "i32"){
         dataReg = getReg();
-        dataReg = std::to_string(emitZext(dataReg, data));
+        dataReg = std::to_string(emitZext(dataReg, data, argType));
     }
     llvm.assignToReg("0", false, reg=reg);
     string ptrReg = getReg();
@@ -810,13 +808,13 @@ Statement::Statement(Exp *exp) {
                 if (tableStack[i]->symbols[j]->type[size - 1] == exp->type) {
                     this->data = exp->value;
                     string LLVMRetType = getLLVMType(exp->type);
-                    emit("ret " + LLVMRetType + " %"+exp->reg);
+                    emit("ret " + LLVMRetType + " "+exp->reg);
                     return;
                 } else if (exp->type == "BYTE" && tableStack[i]->symbols[j]->type[size - 1] == "INT") {
                     this->data = exp->value;
                     string dataReg = getReg();
-                    emitZext(dataReg, exp->reg);
-                    emit("ret i32 %" + dataReg);
+                    emitZext(dataReg, exp->reg, getLLVMType(exp->type));
+                    emit("ret i32 " + dataReg);
                     return;
                 } else {
                     output::errorMismatch(yylineno);
@@ -837,16 +835,13 @@ Statement::Statement(string str, Exp *exp, Statement *st) {
         output::errorMismatch(yylineno);
         exit(1);
     }
-
     if (st != nullptr) {
         this->continueList = st->continueList;
         this->breakList = st->breakList;
     }
     else{
-        vector<pair<int, BranchLabelIndex>> tmpList1;
-        vector<pair<int, BranchLabelIndex>> tmpList2;
-        this->breakList = tmpList1;
-        this->continueList = tmpList2;
+        this->breakList = vector<bp_pair>();
+        this->continueList = vector<bp_pair>();
     }
     this->data = "this was an if/ if else/ while";
 }
@@ -913,7 +908,7 @@ Statement::Statement(Exp *exp, CaseList *caseList) {
     for(auto &c : caseList->cases){
         if(c->value != "INT" && c->value != "BYTE"){
             output::errorMismatch(yylineno);
-            DEBUG(cout<<"case number has wrong type, type ="<<c->value<<endl;)
+            DEBUG(cerr<<"case number has wrong type, type ="<<c->value<<endl;)
             exit(1);
         }
     }
@@ -982,7 +977,7 @@ CaseDecl::CaseDecl(Exp* num, Statements *statements) {
     this->instruction = DeclareCaseLabel();
     if(num->type != "INT" && num->type != "BYTE"){
         output::errorMismatch(yylineno);
-        DEBUG(cout<<"case number is not int or byte, num->type="<<num->type<<endl;)
+        DEBUG(cerr<<"case number is not int or byte, num->type="<<num->type<<endl;)
         exit(1);
     }
     this->reg = num->reg;

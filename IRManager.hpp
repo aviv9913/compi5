@@ -45,7 +45,9 @@ void printGlobalBuffer() {
 
 string getReg() {
     static int reg_count = 0;
-    return "%t" + to_string(reg_count++);
+    string reg = "%t" + to_string(reg_count++);
+    DEBUG(cerr<<"new_reg created:"<<reg<<endl;)
+    return reg;
 }
 
 string getGlobalReg(string reg) {
@@ -100,7 +102,7 @@ int emitUnconditional() {
 
 int emitCondition(string reg1, string relop, string reg2) {
     string res_reg = getReg();
-    emit(res_reg + " = " + getRELOPType(relop, false) + reg1 + ", " + reg2);
+    emit(res_reg + " = " + getRELOPType(relop, false) + " " + reg1 + ", " + reg2);
     return emitConditionFromResult(res_reg);
 }
 
@@ -108,7 +110,7 @@ int emitBranchLabel(string label){
     return emit("br label %" + label);
 }
 
-int emitZext(string reg1, string reg2, string arg_type = "i8") {
+int emitZext(string reg1, string reg2, string arg_type) {
     if (reg2.find("%") != 0) {
         reg2 = "%" + reg2;
     }
@@ -118,9 +120,9 @@ int emitZext(string reg1, string reg2, string arg_type = "i8") {
 int checkTypeAndEmit(Exp *left, Exp *right) {
     string reg = getReg();
     if (left->type == "BYTE") {
-        return emitZext(reg, left->reg);
+        return emitZext(reg, left->reg, "i8");
     } else if (right->type == "BYTE") {
-        return emitZext(reg, right->reg);
+        return emitZext(reg, right->reg , "i8");
     }
     return -1; // shouldn't get here
 }
@@ -175,7 +177,7 @@ private:
     }
 
     void handleZeroDivision(string reg) {
-        emitCondition(reg, "=", "0");
+        emitCondition(reg, "==", "0");
         int b_first = emitConditionFromResult(reg);
         string l_first = genLabel();
         string zero_reg = getReg();
@@ -274,6 +276,7 @@ public:
         if (!isSigned) {
             checkTypeAndEmit(left, right);
         }
+        //DEBUG(cerr<<"op_type:"<<op_type<<", op:"<<op<<", reg_l:"<<reg_l<<", reg_r:"<<reg_r<<", newreg:"<<new_reg<<endl;)
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
             reg_r = getReg();
