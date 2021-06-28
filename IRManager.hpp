@@ -109,6 +109,9 @@ int emitBranchLabel(string label){
 }
 
 int emitZext(string reg1, string reg2, string arg_type = "i8") {
+    if (reg2.find("%") != 0) {
+        reg2 = "%" + reg2;
+    }
     return emit(reg1 + " = zext " + arg_type + " " + reg2 + " to i32");
 }
 
