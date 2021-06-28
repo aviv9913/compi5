@@ -313,17 +313,20 @@ Exp::Exp(Node *terminal, string str) : Node(terminal->value) {
     if (str.compare("NUM") == 0) {
         this->type = "INT";
         this->reg = llvm.assignToReg(terminal->value, false);
-    } else if (str.compare("B") == 0) {
+    }
+    else if (str.compare("B") == 0) {
         if (stoi(terminal->value) > 255) {
             output::errorByteTooLarge(yylineno, terminal->value);
             exit(0);
         }
         this->type = "BYTE";
         this->reg = llvm.assignToReg(terminal->value, true);
-    } else if (str.compare("STRING") == 0) {
+    }
+    else if (str.compare("STRING") == 0) {
         this->type = "STRING";
         this->reg = llvm.addGlobalString(terminal->value);
-    } else if (str.compare("TRUE") == 0) {
+    }
+    else if (str.compare("TRUE") == 0) {
         this->boolValue = true;
         this->type = "BOOL";
         this->reg = llvm.assignBoolToReg("1");
@@ -603,14 +606,16 @@ Formals::Formals(FormalsList *formalsList) {
 }
 
 /************************ STATEMENT ************************/
-// Statement-> (Statement)
+// Statement-> (Statements)
 Statement::Statement(Statements *sts) {
     FUNC_ENTRY()
-    vector<pair<int, BranchLabelIndex>> tmpList1;
-    vector<pair<int, BranchLabelIndex>> tmpList2;
-    this->breakList = tmpList1;
-    this->continueList = tmpList2;
+//    vector<pair<int, BranchLabelIndex>> tmpList1;
+//    vector<pair<int, BranchLabelIndex>> tmpList2;
+//    this->breakList = tmpList1;
+//    this->continueList = tmpList2;
     data = "this used to be Statements";
+    this->breakList = vector<bp_pair>(sts->breakList);
+    this->continueList = vector<bp_pair>(sts->continueList);
 }
 
 // Statement-> Type ID;

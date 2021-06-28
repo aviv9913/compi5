@@ -79,7 +79,7 @@ Statements:
     | Statements Statement{$$= new Statements(dynamic_cast<Statements*>($1), dynamic_cast<Statement*>($2));};
 
 Statement:
-    LBRACE OSM Statements CSM RBRACE{$$= new Statements(dynamic_cast<Statement*>($3));}
+    LBRACE OSM Statements CSM RBRACE{$$= new Statement (dynamic_cast<Statements*>($3));}
     | Type ID SC{$$= new Statement(dynamic_cast<Type*>($1), $2);}
     | Type ID ASSIGN Exp SC {$$= new Statement(dynamic_cast<Type*>($1), $2, dynamic_cast<Exp*>($4));}
     | ID ASSIGN Exp SC {$$= new Statement($1, dynamic_cast<Exp*>($3));}
