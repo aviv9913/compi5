@@ -949,10 +949,8 @@ Statement::Statement(Exp *exp, CaseList *caseList) {
 
 Statements::Statements(Statement *st) {
     FUNC_ENTRY()
-    if(st != nullptr){
-        this->breakList = st->breakList;
-        this->continueList = st->continueList;
-    }
+    this->breakList = st->breakList;
+    this->continueList = st->continueList;
     FUNC_EXIT()
 }
 
