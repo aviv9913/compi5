@@ -580,7 +580,7 @@ FuncDecl::FuncDecl(RetType *retType, Node *ID, Formals *args) {
         string argType = getLLVMType(args->formals[i]->type);
         if(argType != "i32"){
             dataReg = getReg();
-            emitZext(dataReg, to_string(i));
+            emitZext(dataReg, to_string(i), argType);
         }
         emitStore(dataReg, ptrReg);
     }

@@ -108,8 +108,8 @@ int emitBranchLabel(string label){
     return emit("br label %" + label);
 }
 
-int emitZext(string reg1, string reg2) {
-    return emit(reg1 + " = zext i8 " + reg2 + " to i32");
+int emitZext(string reg1, string reg2, string arg_type = "i8") {
+    return emit(reg1 + " = zext " + arg_type + " " + reg2 + " to i32");
 }
 
 int checkTypeAndEmit(Exp *left, Exp *right) {
@@ -196,12 +196,12 @@ public:
 
     string addGlobalString(string s){
 //        string new_str= freshString();
-        string string_size= to_string(s.length() + 1);
+        string string_size= to_string(s.length() - 1);
         string reg = getReg();
         string global_reg = getGlobalReg(reg);
-        emitGlobal(reg + " = constant [" + string_size + "x i8] c\"" + s + "\\00\"");
-        emit(reg + " = getelementptr [" + string_size + "x i8] , ["+ string_size + "x i8]* " +
-                reg + ", i32 0, i32 0");
+        emitGlobal(global_reg + " = constant [" + string_size + " x i8] c\"" + s + "\00");
+        emit(reg + " = getelementptr [" + string_size + " x i8], ["+ string_size + " x i8]* " +
+                global_reg + ", i8 0, i8 0");
         return reg;
     }
 
