@@ -288,16 +288,22 @@ public:
         string new_reg = getReg();
         string first_l;
         string second_l;
-        string end_l = genLabel();
-        int loc2 = emitUnconditional();
-        int loc3 = emitUnconditional();
+        string end_l;
+        int loc2;
+        int loc3;
 
         if (op_type == "and") {
+            loc2 = emitUnconditional();
             second_l = genLabel(); // left false
+            loc3 = emitUnconditional();
+            end_l = genLabel();
             emitPhi(new_reg, right_reg, instr, second_l);
             first_l = short_circuit->instruction;
         } else if (op_type == "or") {
+            loc2 = emitUnconditional();
             first_l = genLabel(); // left true
+            loc3 = emitUnconditional();
+            end_l = genLabel();
             emitPhi(new_reg, right_reg, instr, first_l);
             second_l = short_circuit->instruction;
         }
