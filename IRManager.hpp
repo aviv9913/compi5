@@ -199,7 +199,7 @@ public:
 
     string addGlobalString(string s){
 //        string new_str= freshString();
-        string string_size= to_string(s.length() - 1);
+        string string_size= to_string(s.length());
         string reg = getReg();
         string global_reg = getGlobalReg(reg);
         emitGlobal(global_reg + " = constant [" + string_size + " x i8] c\"" + s + "\00");
