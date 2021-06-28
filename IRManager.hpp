@@ -199,10 +199,11 @@ public:
 
     string addGlobalString(string s){
 //        string new_str= freshString();
-        string string_size= to_string(s.length());
         string reg = getReg();
         string global_reg = getGlobalReg(reg);
-        emitGlobal(global_reg + " = constant [" + string_size + " x i8] c\"" + s + "\00\"");
+        s[s.size() - 1] = '\00';
+        string string_size= to_string(s.length());
+        emitGlobal(global_reg + " = constant [" + string_size + " x i8] c\"" + s + "\"");
         emit(reg + " = getelementptr [" + string_size + " x i8], ["+ string_size + " x i8]* " +
                 global_reg + ", i8 0, i8 0");
         return reg;
