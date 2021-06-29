@@ -338,9 +338,9 @@ public:
         string new_reg = getReg();
         string ptr_reg = getReg();
         if (offset >= 0) {
-            emit(ptr_reg + " = getelementptr [ 50 x i32], [ 50 x i32]* %stack, i32 0, i32 " + to_string(offset));
+            emit(ptr_reg + " = getelementptr [50 x i32], [50 x i32]* %stack, i32 0, i32 " + to_string(offset));
         } else if (offset < 0 && current_func_args > 0) {
-            emit(ptr_reg + " = getelementptr [ " + to_string(current_func_args) + " x i32], [ " +
+            emit(ptr_reg + " = getelementptr [" + to_string(current_func_args) + " x i32], [" +
             to_string(current_func_args) + " x i32]* %args, i32 0, i32 " + to_string(current_func_args + offset));
         } else {
             cout << "ALL HELL BREAK LOOSE" << endl;
