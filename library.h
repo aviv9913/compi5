@@ -114,14 +114,12 @@ public:
 
 class N : public Node {
 public:
-    string code;
     int loc;
     N();
 };
 
 class P : public Node {
 public:
-    string code;
     int loc;
     P(Exp *left);
 };
