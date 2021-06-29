@@ -117,14 +117,20 @@ int emitZext(string reg1, string reg2, string arg_type) {
     return emit(reg1 + " = zext " + arg_type + " " + reg2 + " to i32");
 }
 
-int checkTypeAndEmit(Exp *left, Exp *right) {
-    string reg = getReg();
+vector<string> checkTypeAndEmit(Exp *left, Exp *right) {
+    vector<string> res;
+    string data_left = left->reg;
+    string data_right = right->reg;
     if (left->type == "BYTE") {
-        return emitZext(reg, left->reg, "i8");
+        data_left = getReg();
+        emitZext(data_left, left->reg, "i8");
     } else if (right->type == "BYTE") {
-        return emitZext(reg, right->reg , "i8");
+        data_right = getReg();
+        emitZext(data_right, right->reg , "i8");
     }
-    return -1; // shouldn't get here
+    res.push_back(data_left);
+    res.push_back(data_right);
+    return res; // shouldn't get here
 }
 
 int emitPhi(string reg1, string reg2, string value, string label, string boolVal) {
@@ -268,10 +274,13 @@ public:
         string reg_l = left->reg;
         string reg_r = right->reg;
         string new_reg = getReg();
+        vector<string> new_regs;
 
         if (op_type == "/") {
-            checkTypeAndEmit(left, right);
-            handleZeroDivision(right->reg);
+            new_regs = checkTypeAndEmit(left, right);
+            reg_l = new_regs[0];
+            reg_r = new_regs[1];
+            handleZeroDivision(reg_r);
         }
         if (!isSigned) {
             checkTypeAndEmit(left, right);
