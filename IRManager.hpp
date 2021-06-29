@@ -148,7 +148,7 @@ string emitCall(string retType, string func_name, string args) {
     if (retType == "void") {
         emit("call " + retType + " @" + func_name + " " + args);
     } else {
-        emit(new_reg + " = call " + retType + " @" + func_name + " " + args);
+        emit(new_reg + " = call " + retType + " @" + func_name + args);
     }
     return new_reg;
 }

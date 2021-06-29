@@ -132,7 +132,7 @@ void endCurrentFunc(RetType *retType) {
         emit("ret void");
     } else {
         string type = getLLVMType(retType->value);
-        emit("ret " + type + "0");
+        emit("ret " + type + " 0");
     }
     emit("}");
     currentFunc = "";
