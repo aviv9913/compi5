@@ -58,16 +58,16 @@ void decLoop(N *first, P *second, Statement *st) {
 
     int new_loc = emitUnconditional();
     string new_label = genLabel();
-    bpatch(makeList(bp_pair(first->loc, FIRST)), first->code);
-    bpatch(makeList(bp_pair(second->loc, FIRST)), second->code);
+    bpatch(makeList(bp_pair(first->loc, FIRST)), first->instruction);
+    bpatch(makeList(bp_pair(second->loc, FIRST)), second->instruction);
     bpatch(makeList(bp_pair(second->loc, SECOND)), new_label);
-    bpatch(makeList(bp_pair(new_loc, FIRST)), first->code);
+    bpatch(makeList(bp_pair(new_loc, FIRST)), first->instruction);
 
     if (st->breakList.size() != 0) {
         bpatch(st->breakList, new_label);
     }
     if (st->continueList.size() != 0) {
-        bpatch(st->continueList, first->code);
+        bpatch(st->continueList, first->instruction);
     }
 }
 
