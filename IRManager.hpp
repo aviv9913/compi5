@@ -159,6 +159,9 @@ void emitStore(string dataReg, string ptrReg, string ptrRegType= "i32*", string 
         cerr<<"emitStore: no '*' in ptrReg type";
         exit(1);
     }
+    if (dataReg.find("%") == string::npos) {
+        dataReg = "%" + dataReg;
+    }
     emit("store " + dataRegType + " " + dataReg + ", " + ptrRegType + " " + ptrReg);
 }
 
