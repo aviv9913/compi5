@@ -100,10 +100,12 @@ int emitUnconditional() {
     return emit("br label @");
 }
 
-int emitCondition(string reg1, string relop, string reg2) {
-    string res_reg = getReg();
-    emit(res_reg + " = " + getRELOPType(relop, false) + " " + reg1 + ", " + reg2);
-    return emitConditionFromResult(res_reg);
+int emitCondition(string reg1, string relop, string reg2, string cond = "") {
+    if (cond.empty()) {
+        cond = getReg();
+    }
+    emit(cond + " = " + getRELOPType(relop, false) + " " + reg1 + ", " + reg2);
+    return emitConditionFromResult(cond);
 }
 
 int emitBranchLabel(string label){
@@ -182,9 +184,8 @@ private:
         emitGlobal("}");
     }
 
-    void handleZeroDivision(string reg) {
-        emitCondition(reg, "==", "0");
-        int b_first = emitConditionFromResult(reg);
+    void handleZeroDivision(string cond, string reg) {
+        int b_first =  emitCondition(reg, "==", "0", cond);
         string l_first = genLabel();
         string zero_reg = getReg();
 //        string zero_reg = addGlobalString("Error division by zero");
@@ -277,10 +278,11 @@ public:
         vector<string> new_regs;
 
         if (op_type == "/") {
+            string cond = getReg();
             new_regs = checkTypeAndEmit(left, right);
             reg_l = new_regs[0];
             reg_r = new_regs[1];
-            handleZeroDivision(reg_r);
+            handleZeroDivision(cond, reg_r);
         }
         if (!isSigned) {
             checkTypeAndEmit(left, right);
