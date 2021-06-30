@@ -222,6 +222,26 @@ P::P(Exp *left) {
     this->instruction = genLabel();
 }
 
+Node::Node(string str) {
+    DEBUG(cerr<<str<<"|"<<endl;)
+    if (str == "void") {
+        value = "VOID";
+    } else if (str == "bool") {
+        value = "BOOL";
+    } else if (str == "int") {
+        value = "INT";
+    } else if (str == "byte") {
+        value = "BYTE";
+    } else if(str == "OpenNewCase"){
+        value = str;
+        this->instruction = DeclareCaseLabel();
+    } else {
+        value = str;
+    }
+
+}
+
+
 /************************ CALL ************************/
 // Call: ID()
 Call::Call(Node *ID) {
@@ -329,10 +349,14 @@ Exp::Exp(Node *terminal, string str) : Node(terminal->value) {
         this->type = "BOOL";
         this->reg = llvm.assignBoolToReg("1");
     }
-    else if(str == "SWITCH"){
-            this->type = "INT";
-            this->reg = llvm.assignToReg(terminal->value, false);
-    } else {
+    else if(str == "SWITCH") {
+        this->type = "INT";
+        this->reg = llvm.assignToReg(terminal->value, false);
+    }
+    else if(str == "CASE_NUM"){
+        this->type = "INT";
+    }
+    else {
         this->boolValue = false;
         this->type = "BOOL";
         this->reg = llvm.assignBoolToReg("0");
@@ -493,13 +517,13 @@ Exp::Exp(Exp *exp, string str) {
 }
 
 //switch exp
-Exp::Exp(Exp *exp, N *label) {
+Exp::Exp(int x, Exp *exp, string stage, N *label) {
     FUNC_ENTRY()
-    if (exp->type != "INT"  && exp->type !="BYTE") {
+    if (stage == "switch" && (exp->type != "INT"  && exp->type !="BYTE")) {
         output::errorMismatch(yylineno);
         exit(0);
     }
-    if(label){
+    if(label != nullptr){
         bpatch(makeList(bp_pair(label->loc, FIRST)),label->instruction);
     }
     this->value = exp->value;
@@ -509,7 +533,14 @@ Exp::Exp(Exp *exp, N *label) {
     this->instruction = exp->instruction;
     this->trueList = vector<bp_pair>();
     this->falseList = vector<bp_pair>();
-    emitBranchLabel("label_switch_" + to_string(caseNum));
+    if(stage == "switch"){
+        emitBranchLabel("label_switch_" + to_string(caseNum));
+    }
+    else{
+        int location = emitConditionFromResult(this->reg);
+        trueList = makeList(bp_pair(location, FIRST));
+        falseList = makeList(bp_pair (location, SECOND));
+    }
 }
 
 // Exp
@@ -980,14 +1011,14 @@ string DeclareCaseLabel(){
 
 
 // CaseDecl-> Case NUM: Statements
-CaseDecl::CaseDecl(Exp* num, Statements *statements) {
+CaseDecl::CaseDecl(Exp* num, Statements *statements, Node* label) {
     FUNC_ENTRY()
-    this->instruction = DeclareCaseLabel();
     if(num->type != "INT" && num->type != "BYTE"){
         output::errorMismatch(yylineno);
         DEBUG(cerr<<"case number is not int or byte, num->type="<<num->type<<endl;)
         exit(1);
     }
+    this->instruction = label->instruction;
     this->reg = num->reg;
     this->value = num->type;
     this->num = stoi(num->value);

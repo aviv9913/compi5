@@ -81,19 +81,7 @@ public:
     string value;
     string reg;
     string instruction;
-    Node(string str) {
-        DEBUG(cerr<<str<<"|"<<endl;)
-        if (str == "void") {
-            value = "VOID";
-        } else if (str == "bool") {
-            value = "BOOL";
-        } else if (str == "int") {
-            value = "INT";
-        } else if (str == "byte") {
-            value = "BYTE";
-        } else
-            value = str;
-    }
+    Node(string str);
 
     Node() {
         value = "";
@@ -156,6 +144,9 @@ public:
     // !Exp
     Exp(Node *Not, Exp *exp);
 
+    //switch exp
+    Exp(int x, Exp *exp, string stage, N *label = nullptr);
+
     // BINOP, AND, OR, RELOP
     Exp(Exp *left, Node *op, Exp *right, string str, P *shortC = nullptr);
 
@@ -170,9 +161,6 @@ public:
 
     // Bool check
     Exp(Exp* exp, string str);
-
-    //switch exp
-    Exp(Exp *exp, N *label);
 };
 
 // ExpList
@@ -250,7 +238,7 @@ public:
     vector<pair<int, BranchLabelIndex>> breakList;
     vector<pair<int, BranchLabelIndex>> continueList;
     // CASE NUM: Statements
-    CaseDecl(Exp* num, Statements *statements);
+    CaseDecl(Exp* num, Statements *statements, Node* label);
     CaseDecl(){};
 };
 

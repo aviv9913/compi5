@@ -104,7 +104,7 @@ Statement:
        {decLoop(dynamic_cast<N*> ($3),dynamic_cast<P*> ($6),dynamic_cast<Statement*> ($9)); $$ = $7;} //Original "<Statement*> ($9)), $$ = $7;"
     | BREAK SC{$$= new Statement($1);}
     | CONTINUE SC{$$= new Statement($1);}
-    | SWITCH {incCase();} LPAREN Exp {new Exp(dynamic_cast<Exp*>($4), nullptr);} RPAREN LBRACE OSM
+    | SWITCH {incCase();} LPAREN Exp {new Exp(1, dynamic_cast<Exp*>($4), "switch", nullptr);} RPAREN LBRACE OSM
        CaseList {$$ = new Statement(dynamic_cast<Exp*>($4), dynamic_cast<CaseList*>($9));}
        CSM {decCase();} RBRACE {$$ = $10;};
 
@@ -144,7 +144,7 @@ CaseList:
     | DEFAULT COLON N Statements{$$= new CaseList(dynamic_cast<Statements*>($4), dynamic_cast<N*>($3));};
 
 CaseDecl:
-    CASE NUM COLON Statements{$$= new CaseDecl(new Exp($2, "SWITCH"), dynamic_cast<Statements*>($4));};
+    CASE OpenCase NUM COLON Statements{$$= new CaseDecl(new Exp($3, "CASE_NUM"), dynamic_cast<Statements*>($5), $2);};
 
 
 BoolCheck:  Exp{$$= new Exp(dynamic_cast<Exp*>($1), "STRING");};
@@ -152,6 +152,7 @@ OSM:						 		{openScope();};
 CSM:								{closeScope();};
 M:                              {$$ = new M();};
 N:                              {$$ = new N();};
+OpenCase:                       {$$ = new Node("OpenNewCase");};
 %%
 
 
