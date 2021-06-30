@@ -126,7 +126,8 @@ vector<string> checkTypeAndEmit(Exp *left, Exp *right) {
     if (left->type == "BYTE") {
         data_left = getReg();
         emitZext(data_left, left->reg, "i8");
-    } else if (right->type == "BYTE") {
+    }
+    if (right->type == "BYTE") {
         data_right = getReg();
         emitZext(data_right, right->reg , "i8");
     }

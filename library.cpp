@@ -651,7 +651,7 @@ Statement::Statement(Type *type, Node *ID) {
     string dataReg = reg;
     if(expType != "i32"){
         dataReg = getReg();
-        dataReg = emitZext(dataReg, reg, expType);
+        emitZext(dataReg, reg, expType);
     }
     emitStore(dataReg, ptrReg);
 }
