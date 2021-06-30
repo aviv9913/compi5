@@ -265,7 +265,7 @@ public:
             reg_l = new_regs[0];
             reg_r = new_regs[1];
         }
-        DEBUG(cout << "*************** relop1 - reg_r: " << reg_r << endl;)
+        DEBUG(cerr << "*************** relop1 - reg_r: " << reg_r << endl;)
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         return new_reg;
     }
@@ -273,7 +273,7 @@ public:
     string relop(string leftReg, string rightReg, string op_type, bool isSigned = false) {
         string op = getRELOPType(op_type, isSigned);
         string new_reg = getReg();
-        DEBUG(cout << "*************** relop2 - reg_r: " << rightReg << endl;)
+        DEBUG(cerr << "*************** relop2 - reg_r: " << rightReg << endl;)
         emit(new_reg + " = " + op + " " + leftReg + ", " + rightReg);
         return new_reg;
     }

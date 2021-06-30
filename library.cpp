@@ -702,7 +702,7 @@ string emitCodeToBuffer(string data, string type, int offset){
         dataReg = getReg();
         dataReg = std::to_string(emitZext(dataReg, data, argType));
     }
-    DEBUG(cout << "******************* dataReg: " << dataReg << endl;)
+    DEBUG(cerr << "******************* dataReg: " << dataReg << endl;)
     llvm.assignToReg(dataReg, false, reg=reg);
     string ptrReg = getReg();
     if(offset >= 0){
