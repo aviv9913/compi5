@@ -504,7 +504,7 @@ Exp::Exp(Exp *exp, N *label) {
     this->instruction = exp->instruction;
     this->trueList = vector<bp_pair>();
     this->falseList = vector<bp_pair>();
-    emitBranchLabel("switch_label_" + to_string(caseNum));
+    emitBranchLabel("label_switch_" + to_string(caseNum));
 }
 
 // Exp
