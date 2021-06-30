@@ -696,13 +696,13 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
 }
 
 string emitCodeToBuffer(string data, string type, int offset){
-    DEBUG(cerr << "******************* data: " << data << endl;)
     string reg = getReg();
     string dataReg = data;
     string argType = getLLVMType(type);
     if(argType != "i32"){
         dataReg = getReg();
-        dataReg = std::to_string(emitZext(dataReg, data, argType));
+//        dataReg = std::to_string(emitZext(dataReg, data, argType));
+        emitZext(dataReg, data, argType);
     }
     DEBUG(cerr << "******************* dataReg: " << dataReg << endl;)
     llvm.assignToReg(dataReg, false, reg=reg);
