@@ -927,7 +927,7 @@ Statement::Statement(Exp *exp, CaseList *caseList) {
         string tempReg = llvm.assignToReg(to_string(currCase->num), false);
         string compareReg = llvm.relop(exp->reg, tempReg, "==");
         string falseCaseLabel = "label_switch_" + to_string(caseNum) + "_case_" + to_string(i);
-        emit("br i1 " + compareReg + ", label "+ currCase->instruction + ", label %" + falseCaseLabel);
+        emit("br i1 " + compareReg + ", label %"+ currCase->instruction + ", label %" + falseCaseLabel);
         emit(falseCaseLabel + ":");
         if(!currCase->breakList.empty()){
             bpatch(currCase->breakList, finalLabel);
