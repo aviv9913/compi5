@@ -383,7 +383,7 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
         } // BINOP
         else if (str.compare("ADD") == 0 || str.compare("MUL") == 0) {
             this->type = "BYTE";
-            if (left->type.compare("INT") == 0 || right->type.compare("INT")) {
+            if (left->type.compare("INT") == 0 || right->type.compare("INT") == 0) {
                 this->type = "INT"; //
             }
             this->reg = llvm.binop(left, right, op->value, isInt);
