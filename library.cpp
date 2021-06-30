@@ -385,6 +385,7 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
                 this->type = "INT"; //
             }
             this->reg = llvm.binop(left, right, op->value, isInt);
+            DEBUG(cerr << "this->reg: " << this->reg << endl;)
         }
     } // AND, OR
     else if (left->type.compare("BOOL") == 0 &&
