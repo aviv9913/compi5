@@ -258,9 +258,12 @@ public:
         string reg_l = left->reg;
         string  reg_r = right->reg;
         string new_reg = getReg();
+        vector<string> new_regs;
 
         if (!isSigned) {
-            checkTypeAndEmit(left, right);
+            new_regs = checkTypeAndEmit(left, right);
+            reg_l = new_regs[0];
+            reg_r = new_regs[1];
         }
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         return new_reg;
@@ -288,7 +291,9 @@ public:
             handleZeroDivision(cond, reg_r);
         }
         if (!isSigned) {
-            checkTypeAndEmit(left, right);
+            new_regs = checkTypeAndEmit(left, right);
+            reg_l = new_regs[0];
+            reg_r = new_regs[1];
         }
         //DEBUG(cerr<<"op_type:"<<op_type<<", op:"<<op<<", reg_l:"<<reg_l<<", reg_r:"<<reg_r<<", newreg:"<<new_reg<<endl;)
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
