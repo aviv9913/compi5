@@ -696,6 +696,7 @@ Statement::Statement(Type *type, Node *ID, Exp *exp) {
 }
 
 string emitCodeToBuffer(string data, string type, int offset){
+    DEBUG(cerr << "******************* data: " << data << endl;)
     string reg = getReg();
     string dataReg = data;
     string argType = getLLVMType(type);
