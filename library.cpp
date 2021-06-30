@@ -385,7 +385,6 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
                 this->type = "INT"; //
             }
             this->reg = llvm.binop(left, right, op->value, isInt);
-            DEBUG(cerr << "this->reg: " << this->reg << endl;)
         }
     } // AND, OR
     else if (left->type.compare("BOOL") == 0 &&
@@ -419,6 +418,7 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
         this->instruction = end_instr;
     }
     DEBUG(cerr<<"type after calc:"<<this->type<<endl;)
+    DEBUG(cerr << "this->reg: " << this->reg << endl;)
 }
 
 // (Exp)
@@ -739,6 +739,7 @@ Statement::Statement(Node *ID, Exp *exp) {
                         this->data = exp->value;
                         this->value = tableStack[i]->symbols[j]->type[0];
                         this->instruction = exp->instruction;
+                        DEBUG(cerr << "exp: reg=" << exp->reg << " type=" << exp->type << endl;)
                         this->reg = emitCodeToBuffer(exp->reg, exp->type, tableStack[i]->symbols[j]->offset);
                         return;
                     }
