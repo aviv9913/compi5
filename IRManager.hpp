@@ -71,9 +71,9 @@ string getRELOPType(string op, bool isSigned) {
 }
 
 string getArithmeticType(string op, bool isSigned) {
-    if (op == "+") return "add i32";
-    if (op == "-") return "sub i32";
-    if (op == "*") return "mul i32";
+    if (op == "+") return isSigned ? "add i8" : "add i32";
+    if (op == "-") return isSigned ? "sub i8" : "sub i32";
+    if (op == "*") return isSigned ? "mul i8" : "mul i32";
     if (op == "/") return isSigned ? "udiv i8" : "sdiv i32";
     return "";
 }

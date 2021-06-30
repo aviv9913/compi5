@@ -176,8 +176,10 @@ string getLLVMType(string type) {
 
 bool isSigned(string left_type, string right_type = "") {
     if (left_type == "INT" || (!right_type.empty() && right_type == "INT")) {
+        DEBUG(cout << "type = i32" << endl;)
         return false;
     }
+    DEBUG(cout << "type = i8" << endl;)
     return true;
 }
 
@@ -273,7 +275,6 @@ Call::Call(Node *ID, ExpList *paramList) {
                     }
                     args += getLLVMType(i->type[j]) + " " + paramList->expList[j].reg + ",";
                     if (paramList->expList[j].type != i->type[j]) {
-                        DEBUG(cout << "paramList->expList[j].type != i->type -" << paramList->expList[j].type << " != " << i->type[j] << endl;)
                         i->type.pop_back(); // removing the return type of the function
                         output::errorPrototypeMismatch(yylineno, i->name, i->type);
                         exit(0);
@@ -287,7 +288,6 @@ Call::Call(Node *ID, ExpList *paramList) {
                 bpatch(makeList(bp_pair(loc, FIRST)), this->instruction);
                 return; //if we reached this line, then we found the right function
             } else {
-                DEBUG(cout << "i->type.size() != 1 + paramList->expList.size() " <<i->type.size() << " != " << paramList->expList.size() << endl;)
                 i->type.pop_back();
                 output::errorPrototypeMismatch(yylineno, i->name, i->type);
                 exit(0);
