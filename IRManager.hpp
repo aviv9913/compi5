@@ -308,7 +308,6 @@ public:
     }
 
     vector<string> boolop(string left_reg, string right_reg, string op_type, string instr, P *short_circuit){
-        FUNC_ENTRY()
         vector<string> res;
         string new_reg = getReg();
         string first_l;

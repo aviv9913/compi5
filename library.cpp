@@ -395,6 +395,10 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
         } else {
             this->instruction = shortC->instruction;
         }
+        if (op->value != "and" && op->value != "or" ) {
+            output::errorMismatch(yylineno);
+            exit(0);
+        }
         vector<string> bool_res = llvm.boolop(left->reg, right->reg, op->value, this->instruction, shortC);
         this->reg = bool_res[0];
         end_instr = bool_res[1];
