@@ -176,10 +176,8 @@ string getLLVMType(string type) {
 
 bool isSigned(string left_type, string right_type = "") {
     if (left_type == "INT" || (!right_type.empty() && right_type == "INT")) {
-        DEBUG(cout << "type = i32" << endl;)
         return false;
     }
-    DEBUG(cout << "type = i8" << endl;)
     return true;
 }
 
