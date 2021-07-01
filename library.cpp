@@ -383,10 +383,8 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
     FUNC_ENTRY()
     this->type = "";
     this->boolValue = false;
-    vector<pair<int, BranchLabelIndex>> false_list;
-    vector<pair<int, BranchLabelIndex>> true_list;
-    this->falseList = false_list;
-    this->trueList = true_list;
+    this->falseList = vector<bp_pair>();
+    this->trueList = vector<bp_pair>();
     string end_instr;
 
     DEBUG(printMsgToErr("left:"+left->type+", op:"+op->value+", right:"+right->type+", srting:"+str);)
@@ -464,14 +462,16 @@ Exp::Exp(Exp *exp) {
 // ID
 Exp::Exp(Node *ID) {
     FUNC_ENTRY()
-    vector<bp_pair> false_list;
-    vector<bp_pair> true_list;
-    this->falseList = false_list;
-    this->trueList = true_list;
+    if (!IDExists(ID->value)) {
+        output::errorUndef(yylineno, ID->value);
+        exit(0);
+    }
+
+    this->falseList =  vector<bp_pair>();
+    this->trueList = vector<bp_pair>();
     for (int i = tableStack.size()-1; i > 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
             if (tableStack[i]->symbols[j]->name == ID->value) {
-
                 this->value = ID->value;
                 this->type = tableStack[i]->symbols[j]->type.back();
                 this->boolValue = false;
@@ -760,11 +760,12 @@ string emitCodeToBuffer(string data, string type, int offset){
 Statement::Statement(Node *ID, Exp *exp) {
     FUNC_ENTRY()
     //avoid malloc statments
-    vector<pair<int, BranchLabelIndex>> tmpList1;
-    vector<pair<int, BranchLabelIndex>> tmpList2;
-    this->breakList = tmpList1;
-    this->continueList = tmpList2;
-
+    if (!IDExists(ID->value)) {
+        output::errorUndef(yylineno, ID->value);
+        exit(0);
+    }
+    this->breakList = vector<bp_pair>();
+    this->continueList = vector<bp_pair>();
     // checking if the ID is in scope and type fits exp type
     for (int i = tableStack.size()-1; i > 0; --i) {
         for (int j = 0; j < tableStack[i]->symbols.size(); ++j) {
