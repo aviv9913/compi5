@@ -353,7 +353,7 @@ public:
         } else {
             cout << "ALL HELL BREAK LOOSE" << endl;
         }
-        emit(new_reg + "= load i32, i32* " + ptr_reg);
+        emit(new_reg + " = load i32, i32* " + ptr_reg);
         string id_type = getLLVMType(type);
         if (id_type != "i32") {
             string data_reg = getReg();
