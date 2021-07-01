@@ -409,7 +409,9 @@ Exp::Exp(Exp *left, Node *op, Exp *right, string str, P *shortC) {
             if (left->type.compare("INT") == 0 || right->type.compare("INT") == 0) {
                 this->type = "INT";
             }
-            this->reg = llvm.binop(left, right, op->value, isInt);
+            vector<string> res = llvm.binop(left, right, op->value, isInt);
+            this->reg = res[0];
+            end_instr = res[1];
         }
     } // AND, OR
     else if (left->type.compare("BOOL") == 0 &&

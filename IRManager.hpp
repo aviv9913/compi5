@@ -326,7 +326,7 @@ public:
         }
         res.push_back(new_reg);
         res.push_back(end_l);
-        return new_reg;
+        return res;
     }
 
     vector<string> boolop(string left_reg, string right_reg, string op_type, string instr, P *short_circuit){
