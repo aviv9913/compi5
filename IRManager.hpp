@@ -333,6 +333,7 @@ public:
             emitPhi(new_reg, right_reg, instr, second_l, "0");
             first_l = short_circuit->instruction;
             DEBUG(cerr << "************ firsl_l: " << first_l << endl;)
+            DEBUG(cerr << "*************** second_l: " << second_l << endl;)
             DEBUG(cerr << "************ end_l: " << end_l << endl;)
         } else if (op_type == "or") {
             loc2 = emitUnconditional();
