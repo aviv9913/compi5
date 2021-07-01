@@ -61,8 +61,8 @@ string getNewStr() {
 }
 
 string getRELOPType(string op, bool isSigned) {
-    if (op == "==") return "icmp eq i32";
-    if (op == "!=") return "icmp ne i32";
+    if (op == "==") return isSigned ? "icmp eq i8" : "icmp eq i32" ;
+    if (op == "!=") return isSigned ? "icmp ne i8" : "icmp ne i32" ;
     if (op == "<") return isSigned ? "icmp ult i8" : "icmp slt i32";
     if (op == ">") return isSigned ? "icmp ugt i8" : "icmp sgt i32";
     if (op == "<=") return isSigned ? "icmp ule i8" : "icmp sle i32";
@@ -108,6 +108,15 @@ int emitCondition(string reg1, string relop, string reg2, string cond = "") {
     return emitConditionFromResult(cond);
 }
 
+int emitCondition(string leftReg, string op, string rightReg, bool isSigned, string resReg = "") {
+    if (resReg.empty()) {
+        resReg = getReg();
+    }
+    emit(resReg + " = " + getRELOPType(op, isSigned) + " " + leftReg + ", " + rightReg);
+    return emitConditionFromResult(resReg);
+}
+
+
 int emitBranchLabel(string label){
     return emit("br label %" + label);
 }
@@ -133,7 +142,7 @@ vector<string> checkTypeAndEmit(Exp *left, Exp *right) {
     }
     res.push_back(data_left);
     res.push_back(data_right);
-    return res; // shouldn't get here
+    return res;
 }
 
 int emitPhi(string reg1, string reg2, string value, string label, string boolVal) {
@@ -188,11 +197,11 @@ private:
         emitGlobal("}");
     }
 
-    void handleZeroDivision(string cond, string reg) {
-        int b_first =  emitCondition(reg, "==", "0", cond);
+    void handleZeroDivision(string cond, string reg, bool isSigned = false) {
+        FUNC_ENTRY()
+        int b_first =  emitCondition(reg, "==", "0", isSigned, cond);
         string l_first = genLabel();
         string zero_reg = getReg();
-//        string zero_reg = addGlobalString("Error division by zero");
         emit(zero_reg + " = getelementptr [22 x i8], [22 x i8]* @ZeroExcp, i32 0, i32 0");
         emit("call void @print(i8* " + zero_reg + ")");
         exitProgram();
@@ -280,6 +289,7 @@ public:
     }
 
     string binop(Exp *left, Exp *right, string op_type, bool isSigned) {
+        DEBUG(cerr<<"left:"+left->reg+", op:"+op_type+", right:"+right->reg+", isSigned:"<<isSigned<<endl;)
         string op = getArithmeticType(op_type, isSigned);
         string reg_l = left->reg;
         string reg_r = right->reg;
@@ -288,17 +298,15 @@ public:
 
         if (op_type == "/") {
             string cond = getReg();
-            new_regs = checkTypeAndEmit(left, right);
-            reg_l = new_regs[0];
-            reg_r = new_regs[1];
-            handleZeroDivision(cond, reg_r);
+            if(!isSigned){
+                new_regs = checkTypeAndEmit(left, right);
+                reg_l = new_regs[0];
+                reg_r = new_regs[1];
+            }
+            handleZeroDivision(cond, reg_r, isSigned);
         }
-        if (!isSigned) {
-            new_regs = checkTypeAndEmit(left, right);
-            reg_l = new_regs[0];
-            reg_r = new_regs[1];
-        }
-        //DEBUG(cerr<<"op_type:"<<op_type<<", op:"<<op<<", reg_l:"<<reg_l<<", reg_r:"<<reg_r<<", newreg:"<<new_reg<<endl;)
+
+        DEBUG(cerr<<"op_type:"<<op_type<<", op:"<<op<<", reg_l:"<<reg_l<<", reg_r:"<<reg_r<<", newreg:"<<new_reg<<endl;)
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
             reg_r = getReg();
