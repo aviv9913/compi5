@@ -184,7 +184,7 @@ private:
 
         emitGlobal("@.int_specifier = constant [4 x i8] c\"%d\\0A\\00\"");
         emitGlobal("@.str_specifier = constant [4 x i8] c\"%s\\0A\\00\"");
-        emitGlobal("@ZeroExcp = constant [22 x i8] c\"Error division by zero\"");
+        emitGlobal("@ZeroExcp = constant [23 x i8] c\"Error division by zero\\00\"");
 
         emitGlobal("define void @printi(i32) {");
         emitGlobal("call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0), i32 %0)");
@@ -202,7 +202,7 @@ private:
         int b_first =  emitCondition(reg, "==", "0", isSigned, cond);
         string l_first = genLabel();
         string zero_reg = getReg();
-        emit(zero_reg + " = getelementptr [22 x i8], [22 x i8]* @ZeroExcp, i32 0, i32 0");
+        emit(zero_reg + " = getelementptr [23 x i8], [23 x i8]* @ZeroExcp, i32 0, i32 0");
         emit("call void @print(i8* " + zero_reg + ")");
         exitProgram();
         int b_second = emitUnconditional();
@@ -220,12 +220,15 @@ public:
     }
 
     string addGlobalString(string s){
-//        string new_str= freshString();
+        FUNC_ENTRY()
+        DEBUG(cerr<<"string:"<<s<<endl;)
         string reg = getReg();
         string global_reg = getGlobalReg(reg);
-        s[s.size() - 1] = '\00';
-        string string_size= to_string(s.length());
-        emitGlobal(global_reg + " = constant [" + string_size + " x i8] c\"" + s + "\"");
+//        s = s.substr(0, s.length() - 2) + "\\00";
+        string string_size = to_string(s.length());
+        string globalStr = global_reg + " = constant [" + string_size + " x i8] c\"" + s.substr(0, s.length() - 1) + "\\00" + "\"";
+        DEBUG(cerr<<globalStr<<endl;)
+        emitGlobal(globalStr);
         emit(reg + " = getelementptr [" + string_size + " x i8], ["+ string_size + " x i8]* " +
                 global_reg + ", i8 0, i8 0");
         return reg;
