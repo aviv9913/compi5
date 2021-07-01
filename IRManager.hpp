@@ -296,16 +296,16 @@ public:
         string new_reg = getReg();
         vector<string> new_regs;
 
-        if (op_type == "/") {
-            string cond = getReg();
-            if(!isSigned){
-                new_regs = checkTypeAndEmit(left, right);
-                reg_l = new_regs[0];
-                reg_r = new_regs[1];
-            }
-            handleZeroDivision(cond, reg_r, isSigned);
+        if(!isSigned){
+            new_regs = checkTypeAndEmit(left, right);
+            reg_l = new_regs[0];
+            reg_r = new_regs[1];
         }
 
+        if (op_type == "/") {
+            string cond = getReg();
+            handleZeroDivision(cond, reg_r, isSigned);
+        }
         DEBUG(cerr<<"op_type:"<<op_type<<", op:"<<op<<", reg_l:"<<reg_l<<", reg_r:"<<reg_r<<", newreg:"<<new_reg<<endl;)
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
         if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
