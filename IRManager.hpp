@@ -197,19 +197,20 @@ private:
         emitGlobal("}");
     }
 
-    void handleZeroDivision(string cond, string reg, bool isSigned = false) {
+    string handleZeroDivision(string cond, string reg, bool isSigned = false) {
         FUNC_ENTRY()
         int b_first =  emitCondition(reg, "==", "0", isSigned, cond);
-        string l_first = genLabel();
+        string l_first = genLabel(); // division by zero
         string zero_reg = getReg();
         emit(zero_reg + " = getelementptr [23 x i8], [23 x i8]* @ZeroExcp, i32 0, i32 0");
         emit("call void @print(i8* " + zero_reg + ")");
         exitProgram();
         int b_second = emitUnconditional();
-        string l_second = genLabel();
+        string l_second = genLabel(); // normal division
         bpatch(makeList(bp_pair(b_first, FIRST)), l_first);
         bpatch(makeList(bp_pair(b_first, SECOND)), l_second);
         bpatch(makeList(bp_pair(b_second, FIRST)), l_second);
+        return l_second;
     }
 
 public:
@@ -291,13 +292,15 @@ public:
         return new_reg;
     }
 
-    string binop(Exp *left, Exp *right, string op_type, bool isSigned) {
+    vector<string> binop(Exp *left, Exp *right, string op_type, bool isSigned) {
         DEBUG(cerr<<"left:"+left->reg+", op:"+op_type+", right:"+right->reg+", isSigned:"<<isSigned<<endl;)
         string op = getArithmeticType(op_type, isSigned);
         string reg_l = left->reg;
         string reg_r = right->reg;
         string new_reg = getReg();
+        string end_l = "";
         vector<string> new_regs;
+        vector<string> res;
 
         if(!isSigned){
             new_regs = checkTypeAndEmit(left, right);
@@ -307,15 +310,22 @@ public:
 
         if (op_type == "/") {
             string cond = getReg();
-            handleZeroDivision(cond, reg_r, isSigned);
+            end_l = handleZeroDivision(cond, reg_r, isSigned);
         }
         DEBUG(cerr<<"op_type:"<<op_type<<", op:"<<op<<", reg_l:"<<reg_l<<", reg_r:"<<reg_r<<", newreg:"<<new_reg<<endl;)
         emit(new_reg + " = " + op + " " + reg_l + ", " + reg_r);
-        if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
+//        if (!isSigned && right->type == "BYTE" && left->type == "BYTE") {
+//            reg_r = getReg();
+//            emitTrunc(reg_r, new_reg, "i8");
+//            new_reg = reg_r;
+//        }
+        if (op.find("sdiv") != string::npos && right->type == "BYTE" && left->type == "BYTE") {
             reg_r = getReg();
             emitTrunc(reg_r, new_reg, "i8");
             new_reg = reg_r;
         }
+        res.push_back(new_reg);
+        res.push_back(end_l);
         return new_reg;
     }
 
