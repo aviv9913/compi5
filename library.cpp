@@ -220,7 +220,9 @@ P::P(Exp *left) {
     FUNC_ENTRY()
     this->loc = emitConditionFromResult(left->reg);
     this->instruction = genLabel();
+    DEBUG(printMsgToErr("@@@@@@@@@@@@@@@@ left->reg: " + left->reg);)
     DEBUG(printMsgToErr("############### this->instruction:" + this->instruction);)
+    DEBUG(printMsgToErr("@@@@@@@@@@@@ this->loc: " + to_string(this->loc));)
 }
 
 Node::Node(string str) {

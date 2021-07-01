@@ -338,6 +338,7 @@ public:
             DEBUG(cerr << "************ firsl_l: " << first_l << endl;)
             DEBUG(cerr << "*************** second_l: " << second_l << endl;)
             DEBUG(cerr << "************ end_l: " << end_l << endl;)
+            DEBUG (cerr << "@@@@@@@@@@@@ shortC->loc: " << to_string(short_circuit->loc) << endl;)
         } else if (op_type == "or") {
             loc2 = emitUnconditional();
             first_l = genLabel(); // left true
