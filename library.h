@@ -96,7 +96,6 @@ public:
 // New Classes
 class M : public Node {
 public:
-    string code;
     M();
 };
 

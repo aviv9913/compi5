@@ -133,8 +133,8 @@ Exp:
     | TRUE{$$= new Exp($1, "TRUE");}
     | FALSE{$$= new Exp($1, "FALSE");}
     | NOT Exp{$$= new Exp($1, dynamic_cast<Exp*>($2));}
-    | Exp AND {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "AND", dynamic_cast<P*> ($3));}
-    | Exp OR {$$= castExpToP(dynamic_cast<Exp*> ($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*> ($4), "OR", dynamic_cast<P*> ($3));}
+    | Exp AND {$$= castExpToP(dynamic_cast<Exp*>($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "AND", dynamic_cast<P*>($3));}
+    | Exp OR {$$= castExpToP(dynamic_cast<Exp*>($1));} Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($4), "OR", dynamic_cast<P*>($3));}
     | Exp RELOPN Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPN");}
     | Exp RELOPL Exp {$$= new Exp(dynamic_cast<Exp*>($1), $2, dynamic_cast<Exp*>($3), "RELOPL");};
 
